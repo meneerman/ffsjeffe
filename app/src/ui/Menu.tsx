@@ -90,7 +90,16 @@ export function Menu({ data, repo, naam, herlaad, bijgewerkt, nu = () => new Dat
     }
   }
 
+  const weggeveegd = useRef<Set<string>>(new Set())
+  const nieuwVoorstel = () => {
+    const anders = data.recepten.filter((r) => !weggeveegd.current.has(r.id))
+    const bron = anders.length >= 3 ? anders : data.recepten
+    concept.wijzig(stelVoor(bron, laatstGegeten, data.verpakkingen, standaard, zaadVoor(menu), nu()))
+    weggeveegd.current = new Set()
+  }
+
   const verwijder = (id: string) => {
+    weggeveegd.current.add(id)
     setVerdwijnt((s) => new Set(s).add(id))
     timers.current.push(setTimeout(() => {
       concept.wijzig((huidig) => huidig.filter((g) => g.receptId !== id))
@@ -158,7 +167,7 @@ export function Menu({ data, repo, naam, herlaad, bijgewerkt, nu = () => new Dat
       {gerechten.length === 0 && data.recepten.length > 0 && (
         <div className="leeg">
           <p className="zacht">Het menu is leeg.</p>
-          <button className="knop" onClick={() => concept.wijzig(stelVoor(data.recepten, laatstGegeten, data.verpakkingen, standaard, zaadVoor(menu), nu()))}>Nieuw voorstel</button>
+          <button className="knop" onClick={nieuwVoorstel}>Nieuw voorstel</button>
         </div>
       )}
 

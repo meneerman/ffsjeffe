@@ -247,3 +247,13 @@ test('twee keer snel verwijderen haalt beide weg', async () => {
   await new Promise((r) => setTimeout(r, 500))
   expect(titels()).toEqual([c])
 })
+
+test('Nieuw voorstel geeft andere gerechten dan net weggeveegd', async () => {
+  await toon(new NepRepo(), extra(8))
+  const voor = titels()
+  for (const t of voor) await verwijderBevestigd(t)
+  await waitFor(() => expect(kaarten()).toHaveLength(0))
+  await userEvent.click(screen.getByRole('button', { name: 'Nieuw voorstel' }))
+  expect(kaarten()).toHaveLength(3)
+  expect(titels().sort()).not.toEqual([...voor].sort())
+})

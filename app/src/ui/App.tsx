@@ -5,6 +5,7 @@ import { bewaarVerbinding, leesVerbinding, type Opgeslagen } from './opslag'
 import { useData, type AppData, type Repo } from './useData'
 import { Achtergrond } from './Achtergrond'
 import { Menu } from './Menu'
+import { ReceptPagina } from './Recept'
 import './stijl.css'
 
 export function useHash(): string {
@@ -20,6 +21,13 @@ export function useHash(): string {
 export type SchermProps = { data: AppData; repo: Repo; naam: string; herlaad: () => void; hash: string }
 
 function Inhoud(p: SchermProps) {
+  if (p.hash.startsWith('#/recept/')) {
+    const id = decodeURIComponent(p.hash.slice('#/recept/'.length))
+    const r = p.data.recepten.find((x) => x.id === id)
+    return r ? <ReceptPagina key={r.id} recept={r} data={p.data} /> : (
+      <p className="kaart">Recept niet gevonden. <a className="link-accent" href="#/">Terug naar het menu</a></p>
+    )
+  }
   return <Menu {...p} />
 }
 

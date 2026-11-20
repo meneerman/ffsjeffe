@@ -118,3 +118,24 @@ footer { margin-top: 40px; text-align: center; }
 .deck-kaart { margin: 14px 0 4px; padding: 26px 18px; border-radius: var(--radius); background: var(--vlak); border: 1px solid var(--rand); text-align: center; touch-action: pan-y; user-select: none; }
 .deck-kaart .kop-klein { margin: 0 0 6px; }
 .deck-leeg { padding: 24px 0; text-align: center; }
+
+/* Kookpagina */
+.kook { padding-bottom: 40px; }
+.terug { color: var(--zacht); text-decoration: none; font-size: 14px; }
+.kook-kop { font-size: clamp(36px, 10vw, 46px); margin-top: 14px; }
+.chips { display: flex; flex-wrap: wrap; gap: 8px; }
+.eters-chip button { border: 0; background: none; color: var(--accent); font-size: 17px; width: 22px; padding: 0; }
+.eters-chip [aria-label="eters"] { font-variant-numeric: tabular-nums; min-width: 14px; text-align: center; }
+.sectie { margin: 26px 0 8px; }
+.ingredienten { list-style: none; margin: 0; padding: 0; }
+.ingredienten li { border-bottom: 1px solid var(--rand); }
+.ingredienten label { display: flex; align-items: center; gap: 12px; padding: 11px 0; font-size: 16px; cursor: pointer; }
+.ingredienten input { appearance: none; -webkit-appearance: none; width: 20px; height: 20px; margin: 0; border-radius: 7px; border: 1.5px solid rgba(255, 255, 255, 0.25); display: grid; place-items: center; transition: all 0.2s var(--veer); flex: none; }
+.ingredienten input:checked { background: var(--accent); border-color: var(--accent); }
+.ingredienten input:checked::after { content: '✓'; color: var(--bg); font-size: 13px; font-weight: 700; }
+.ingredienten li.af span { color: #5c5a56; text-decoration: line-through; }
+.stappen { list-style: none; margin: 0; padding: 0; display: grid; gap: 14px; }
+.stappen li { display: flex; gap: 14px; font-size: 17px; line-height: 1.5; }
+.stappen .nr { font-family: var(--serif); font-size: 30px; line-height: 1; color: var(--accent); min-width: 24px; }
+.notities { white-space: pre-wrap; color: var(--zacht); }
+.bron { display: inline-block; margin-top: 18px; text-decoration: none; }

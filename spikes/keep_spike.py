@@ -35,7 +35,7 @@ def connect() -> gkeepapi.Keep:
 
 
 def find_list(keep: gkeepapi.Keep):
-    hits = [n for n in keep.all() if isinstance(n, gkeepapi.node.List) and n.title.strip().lower() == TITLE.lower() and not n.trashed]
+    hits = [n for n in keep.all() if isinstance(n, gkeepapi.node.List) and n.title.strip().lower() == TITLE.lower() and not n.trashed and not n.archived]
     if len(hits) != 1:
         raise SystemExit(f"verwacht precies 1 lijst '{TITLE}', gevonden: {len(hits)}")
     return hits[0]

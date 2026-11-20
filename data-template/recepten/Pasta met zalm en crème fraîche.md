@@ -9,12 +9,24 @@ ingredienten:
   - 100 ml crème fraîche
   - 300 g spinazie
   - 1 teen knoflook
+  - 15 ml olijfolie
   - peper
 ---
+## Benodigdheden
+- knoflookpers
+
+## Voorbereiding
+1. Snijd {2} zalmfilets in blokjes van 2 cm.
+2. Pers {1 teen} knoflook.
+3. Breng een grote pan water met zout aan de kook.
+
 ## Bereiding
-1. Kook {400 g} pasta in ruim gezouten water beetgaar.
-2. Bak de zalm in stukjes 3 min in een hete pan met de knoflook.
-3. Roer {100 ml} crème fraîche en {300 g} spinazie erdoor tot de spinazie slinkt.
+1. Kook {400 g} pasta beetgaar volgens de verpakking.
+2. Verhit {15 ml} olijfolie in een koekenpan op middelhoog vuur.
+3. Bak de zalm en knoflook 3 min.
+4. Roer {100 ml} crème fraîche erdoor.
+5. Schep {300 g} spinazie erdoor tot die geslonken is.
+6. Giet de pasta af en meng met de saus. Breng op smaak met peper.
 
 ## Notities
 Lekker met wat citroenrasp erover.

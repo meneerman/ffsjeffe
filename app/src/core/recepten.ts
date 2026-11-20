@@ -42,24 +42,24 @@ function sectie(body: string, kop: string): string {
   return (einde < 0 ? rest : rest.slice(0, einde)).join('\n').trim()
 }
 
-/** De eerste genummerde lijst in een tekst; vervolgregels horen bij het vorige item. */
-function genummerdeLijst(tekst: string): string[] {
-  const stappen: string[] = []
+/** De eerste lijst (genummerd of met - / *) in een tekst; ingesprongen vervolgregels horen bij het vorige item. */
+function lijst(tekst: string): string[] {
+  const items: string[] = []
   let bezig = false
   for (const regel of tekst.split(/\r?\n/)) {
-    const m = /^\s*\d+[.)]\s+(.*)$/.exec(regel)
+    const m = /^\s*(?:\d+[.)]|[-*])\s+(.*)$/.exec(regel)
     if (m) {
-      stappen.push(m[1].trim())
+      items.push(m[1].trim())
       bezig = true
     } else if (bezig && regel.trim() === '') {
       continue
     } else if (bezig && /^\s+\S/.test(regel)) {
-      stappen[stappen.length - 1] += ` ${regel.trim()}`
+      items[items.length - 1] += ` ${regel.trim()}`
     } else if (bezig) {
       break
     }
   }
-  return stappen
+  return items
 }
 
 export function parseRecept(pad: string, markdown: string): Recept | ReceptFout {
@@ -96,7 +96,9 @@ export function parseRecept(pad: string, markdown: string): Recept | ReceptFout 
     avonden,
     bron,
     ingredienten,
-    stappen: genummerdeLijst(sectie(delen.rest, 'bereiding')),
+    benodigdheden: lijst(sectie(delen.rest, 'benodigdheden')),
+    voorbereiding: lijst(sectie(delen.rest, 'voorbereiding')),
+    stappen: lijst(sectie(delen.rest, 'bereiding')),
     notities: sectie(delen.rest, 'notities'),
   }
 }

@@ -1,4 +1,4 @@
-import { cleanup, render, screen } from '@testing-library/react'
+import { cleanup, render, screen, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { afterEach, beforeEach, expect, test, vi } from 'vitest'
 import { gerecht } from '../core/testdata'
@@ -19,16 +19,34 @@ async function data(menu: Menu | null = MENU): Promise<AppData> {
 }
 const recept = (d: AppData, id = PASTA) => d.recepten.find((r) => r.id === id)!
 
-test('kop, chips, geschaalde ingrediënten en bereiding met eters van het menu', async () => {
+test('kop, chips, benodigdheden, geschaalde ingrediënten, voorbereiding en bereiding', async () => {
   const d = await data()
   render(<ReceptPagina recept={recept(d)} data={d} />)
   expect(screen.getByRole('heading', { level: 1 }).textContent).toBe(PASTA)
   expect(screen.getByText('25 min')).toBeTruthy()
   expect(screen.getByLabelText('eters').textContent).toBe('3')
+  expect(within(screen.getByRole('list', { name: 'Benodigdheden' })).getByText('knoflookpers')).toBeTruthy()
   expect(screen.getByText('300 g pasta')).toBeTruthy()
-  expect(screen.getByText('peper')).toBeTruthy()
-  expect(screen.getByText('Kook 300 g pasta in ruim gezouten water beetgaar.')).toBeTruthy()
+  expect(screen.getByRole('checkbox', { name: 'Snijd 1,5 zalmfilets in blokjes van 2 cm.' })).toBeTruthy()
+  expect(screen.getByText('Kook 300 g pasta beetgaar volgens de verpakking.')).toBeTruthy()
   expect(screen.getByText('Lekker met wat citroenrasp erover.')).toBeTruthy()
+})
+
+test('stappen afvinken: huidige stap uitgelicht, voortgang, onthouden', async () => {
+  const d = await data()
+  const { unmount } = render(<ReceptPagina recept={recept(d)} data={d} />)
+  expect(screen.getByText('Stap 1 van 6')).toBeTruthy()
+  const stappen = () => screen.getAllByRole('button', { name: /^Stap \d+:/ })
+  expect(stappen()[0].getAttribute('aria-current')).toBe('step')
+  await userEvent.click(stappen()[0])
+  expect(stappen()[0].getAttribute('aria-pressed')).toBe('true')
+  expect(stappen()[1].getAttribute('aria-current')).toBe('step')
+  expect(screen.getByText('Stap 2 van 6')).toBeTruthy()
+  unmount()
+  render(<ReceptPagina recept={recept(d)} data={d} />)
+  expect(screen.getByText('Stap 2 van 6')).toBeTruthy()
+  for (const s of stappen().slice(1)) await userEvent.click(s)
+  expect(screen.getByText('Klaar. Eet smakelijk!')).toBeTruthy()
 })
 
 test('− + past het menu-concept aan', async () => {
@@ -72,13 +90,19 @@ test('bronlink alleen bij http(s)', async () => {
   expect(screen.queryByRole('link', { name: /Origineel recept/ })).toBeNull()
 })
 
-test('scherm blijft aan: wake lock aangevraagd en vrijgegeven', async () => {
+test('scherm blijft aan: aangevraagd, label zichtbaar, opnieuw na terugkeren, vrijgegeven', async () => {
   const release = vi.fn().mockResolvedValue(undefined)
-  const request = vi.fn().mockResolvedValue({ release })
+  const lock = { release, released: false, addEventListener: vi.fn() }
+  const request = vi.fn().mockResolvedValue(lock)
   vi.stubGlobal('navigator', { ...navigator, wakeLock: { request } })
   const d = await data()
   const { unmount } = render(<ReceptPagina recept={recept(d)} data={d} />)
   await vi.waitFor(() => expect(request).toHaveBeenCalledWith('screen'))
+  expect(await screen.findByText('scherm blijft aan')).toBeTruthy()
+  lock.released = true // de browser geeft hem vrij als je de app even verlaat
+  Object.defineProperty(document, 'visibilityState', { value: 'visible', configurable: true })
+  document.dispatchEvent(new Event('visibilitychange'))
+  await vi.waitFor(() => expect(request).toHaveBeenCalledTimes(2))
   unmount()
   await vi.waitFor(() => expect(release).toHaveBeenCalled())
 })

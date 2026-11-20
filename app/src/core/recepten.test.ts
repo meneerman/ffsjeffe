@@ -39,19 +39,22 @@ test('parseert het voorbeeldrecept', () => {
   expect(r.id).toBe('Pasta met zalm en crème fraîche')
   expect(r.titel).toBe('Pasta met zalm en crème fraîche')
   expect(r).toMatchObject({ porties: 4, tijdMinuten: 25, avonden: 1, bron: 'https://example.com/pasta-zalm' })
-  expect(r.ingredienten).toHaveLength(6)
+  expect(r.ingredienten).toHaveLength(7)
   expect(r.ingredienten[4]).toEqual({ naam: 'knoflook', hoeveelheid: 1, eenheid: 'teen' })
-  expect(r.stappen).toEqual([
-    'Kook {400 g} pasta in ruim gezouten water beetgaar.',
-    'Bak de zalm in stukjes 3 min in een hete pan met de knoflook.',
-    'Roer {100 ml} crème fraîche en {300 g} spinazie erdoor tot de spinazie slinkt.',
+  expect(r.benodigdheden).toEqual(['knoflookpers'])
+  expect(r.voorbereiding).toEqual([
+    'Snijd {2} zalmfilets in blokjes van 2 cm.',
+    'Pers {1 teen} knoflook.',
+    'Breng een grote pan water met zout aan de kook.',
   ])
+  expect(r.stappen).toHaveLength(6)
+  expect(r.stappen[0]).toBe('Kook {400 g} pasta beetgaar volgens de verpakking.')
   expect(r.notities).toBe('Lekker met wat citroenrasp erover.')
 })
 
 test('standaardwaarden', () => {
   const r = recept('porties: 2\ningredienten: []') as Recept
-  expect(r).toMatchObject({ tijdMinuten: 0, avonden: 1, bron: null, stappen: [], notities: '' })
+  expect(r).toMatchObject({ tijdMinuten: 0, avonden: 1, bron: null, benodigdheden: [], voorbereiding: [], stappen: [], notities: '' })
 })
 
 test('bereiding stopt bij de volgende kop en negeert tekst buiten de lijst', () => {
@@ -83,4 +86,11 @@ test('verpakkingen als lijst van regels', () => {
   expect(parseVerpakkingen(leesVoorbeeld('_verpakkingen.md'))['crème fraîche']).toEqual({ hoeveelheid: 200, eenheid: 'ml' })
   expect(parseVerpakkingen('---\nverpakkingen:\n  - 200 ml Crème  Fraîche\n  - peper\n  - 400 g\n---\n')).toEqual({ 'crème fraîche': { hoeveelheid: 200, eenheid: 'ml' } })
   expect(parseVerpakkingen('niets')).toEqual({})
+})
+
+test('benodigdheden en voorbereiding mogen opsomming of genummerd zijn', () => {
+  const r = recept('porties: 2\ningredienten: []', '## Benodigdheden\n* staafmixer\n- vijzel\n\n## Voorbereiding\n- Snipper de ui.\n- Weeg de bloem af.\n\n## Bereiding\n1. Bak.') as Recept
+  expect(r.benodigdheden).toEqual(['staafmixer', 'vijzel'])
+  expect(r.voorbereiding).toEqual(['Snipper de ui.', 'Weeg de bloem af.'])
+  expect(r.stappen).toEqual(['Bak.'])
 })

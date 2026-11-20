@@ -9,6 +9,9 @@ export type Recept = {
   avonden: number
   bron: string | null
   ingredienten: Ingredient[]
+  /** alleen speciaal gereedschap */
+  benodigdheden: string[]
+  voorbereiding: string[]
   stappen: string[]
   notities: string
 }

@@ -1,14 +1,14 @@
 import { useCallback, useEffect, useState } from 'react'
-import type { Instellingen, Recept, ReceptFout, Verpakkingen, WeekPlan } from '../core/types'
+import type { Instellingen, Menu, Recept, ReceptFout, Verpakkingen } from '../core/types'
 import type { DataRepo, KeepStatus } from '../data/github'
 
-export type Repo = Pick<DataRepo, 'recepten' | 'plannen' | 'instellingen' | 'keepStatus' | 'zetVast'>
+export type Repo = Pick<DataRepo, 'recepten' | 'menu' | 'instellingen' | 'keepStatus' | 'zetMenu'>
 
 export type AppData = {
   recepten: Recept[]
   fouten: ReceptFout[]
   verpakkingen: Verpakkingen
-  plannen: { plan: WeekPlan; sha: string }[]
+  menu: { menu: Menu; sha: string } | null
   instellingen: Instellingen
   keepStatus: KeepStatus | null
 }
@@ -27,9 +27,9 @@ export function useData(repo: Repo | null): DataStaat & { herlaad: () => void } 
     if (!repo) return
     let actief = true
     setStaat({ status: 'laden' })
-    Promise.all([repo.recepten(), repo.plannen(), repo.instellingen(), repo.keepStatus()])
-      .then(([r, plannen, instellingen, keepStatus]) => {
-        if (actief) setStaat({ status: 'klaar', data: { ...r, plannen, instellingen, keepStatus } })
+    Promise.all([repo.recepten(), repo.menu(), repo.instellingen(), repo.keepStatus()])
+      .then(([r, menu, instellingen, keepStatus]) => {
+        if (actief) setStaat({ status: 'klaar', data: { ...r, menu, instellingen, keepStatus } })
       })
       .catch((fout: Error) => actief && setStaat({ status: 'fout', fout }))
     return () => {

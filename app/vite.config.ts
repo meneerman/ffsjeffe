@@ -10,6 +10,15 @@ export default defineConfig({
     VitePWA({
       registerType: 'autoUpdate',
       includeAssets: ['icon.svg'],
+      workbox: {
+        runtimeCaching: [
+          {
+            urlPattern: /^https:\/\/fonts\.(googleapis|gstatic)\.com\/.*/,
+            handler: 'CacheFirst',
+            options: { cacheName: 'fonts', expiration: { maxEntries: 20, maxAgeSeconds: 60 * 60 * 24 * 365 }, cacheableResponse: { statuses: [0, 200] } },
+          },
+        ],
+      },
       manifest: {
         name: 'ffsjeffe',
         short_name: 'ffsjeffe',
@@ -18,8 +27,8 @@ export default defineConfig({
         display: 'standalone',
         start_url: '/ffsjeffe/',
         scope: '/ffsjeffe/',
-        background_color: '#f6f4ef',
-        theme_color: '#2f6b4f',
+        background_color: '#0a0a0c',
+        theme_color: '#0a0a0c',
         icons: [{ src: 'icon.svg', sizes: 'any', type: 'image/svg+xml', purpose: 'any maskable' }],
       },
     }),

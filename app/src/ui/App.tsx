@@ -3,10 +3,7 @@ import { DataRepo, TokenFout, type Verbinding } from '../data/github'
 import { Instellingen } from './Instellingen'
 import { bewaarVerbinding, leesVerbinding, type Opgeslagen } from './opslag'
 import { useData, type AppData, type Repo } from './useData'
-import { Week } from './Week'
-import { Boodschappen } from './Boodschappen'
-import { KeepStatusMelding } from './KeepStatus'
-import { ReceptPagina } from './Recept'
+import { Achtergrond } from './Achtergrond'
 import './stijl.css'
 
 export function useHash(): string {
@@ -21,26 +18,8 @@ export function useHash(): string {
 
 export type SchermProps = { data: AppData; repo: Repo; naam: string; herlaad: () => void; hash: string }
 
-function Inhoud(p: SchermProps) {
-  const { data, repo } = p
-  if (p.hash.startsWith('#/recept/')) {
-    const id = decodeURIComponent(p.hash.slice('#/recept/'.length))
-    const r = data.recepten.find((x) => x.id === id)
-    return r ? <ReceptPagina recept={r} huishouden={data.instellingen.huishouden} /> : (
-      <p className="kaart">Recept niet gevonden. <a href="#/">Terug</a></p>
-    )
-  }
-  return (
-    <Week
-      {...p}
-      Extra={({ slots, perId, vastgezet }) => (
-        <>
-          <KeepStatusMelding key={vastgezet?.vastgezetOp ?? 'geen'} repo={repo} vastgezetOp={vastgezet?.vastgezetOp ?? null} begin={data.keepStatus} />
-          <Boodschappen slots={slots} perId={perId} huishouden={data.instellingen.huishouden} verpakkingen={data.verpakkingen} />
-        </>
-      )}
-    />
-  )
+function Inhoud({ data }: SchermProps) {
+  return <p className="zacht">{data.recepten.length} recepten geladen.</p>
 }
 
 export default function App({ maakRepo = (v: Verbinding) => new DataRepo(v), Scherm = Inhoud }: { maakRepo?: (v: Verbinding) => Repo; Scherm?: (p: SchermProps) => JSX.Element }) {
@@ -57,7 +36,8 @@ export default function App({ maakRepo = (v: Verbinding) => new DataRepo(v), Sch
 
   if (!verbinding || hash === '#/instellingen' || tokenFout) {
     return (
-      <main>
+      <main className="pagina">
+        <Achtergrond />
         <Instellingen
           huidig={verbinding}
           melding={tokenFout ? data.fout.message : undefined}
@@ -72,12 +52,13 @@ export default function App({ maakRepo = (v: Verbinding) => new DataRepo(v), Sch
   }
 
   return (
-    <main>
-      {data.status === 'laden' && <p className="zacht">Laden…</p>}
+    <main className="pagina">
+      <Achtergrond />
+      {data.status === 'laden' && <p className="zacht laden">Laden…</p>}
       {data.status === 'fout' && (
         <div className="kaart">
           <p className="melding fout">Laden mislukt: {data.fout.message}</p>
-          <button onClick={data.herlaad}>Opnieuw</button>
+          <button className="knop" onClick={data.herlaad}>Opnieuw</button>
         </div>
       )}
       {data.status === 'klaar' && (
@@ -93,7 +74,7 @@ export default function App({ maakRepo = (v: Verbinding) => new DataRepo(v), Sch
         </div>
       )}
       <footer>
-        <a href="#/instellingen">instellingen</a>
+        <a className="link-zacht" href="#/instellingen">instellingen</a>
       </footer>
     </main>
   )

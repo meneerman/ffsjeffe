@@ -68,3 +68,10 @@ test('kapotte localStorage-waarde geeft gewoon de instellingen', () => {
   render(<App maakRepo={() => new NepRepo()} />)
   expect(screen.getByLabelText('Jouw naam')).toBeTruthy()
 })
+
+test('achtergrond heeft twee gloedvlakken en is aria-hidden', () => {
+  const { container } = render(<App maakRepo={() => new NepRepo()} />)
+  const a = container.querySelector('.achtergrond')!
+  expect(a.getAttribute('aria-hidden')).toBe('true')
+  expect(a.querySelectorAll('.gloed')).toHaveLength(2)
+})

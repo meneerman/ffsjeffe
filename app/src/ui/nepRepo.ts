@@ -1,37 +1,38 @@
 // Testhulp: een DataRepo in het geheugen.
-import { leesVoorbeeld } from '../testhulp'
 import { parseRecept, parseVerpakkingen } from '../core/recepten'
-import type { Recept, WeekPlan } from '../core/types'
+import type { Menu, Recept } from '../core/types'
 import type { KeepStatus } from '../data/github'
+import { leesVoorbeeld } from '../testhulp'
 
-const lees = leesVoorbeeld
+export const PASTA = 'Pasta met zalm en crème fraîche'
+export const WRAPS = 'Wraps met kip en crème fraîche'
 
 export function voorbeeldRecepten(): Recept[] {
-  return ['pasta-zalm.md', 'wraps-kip.md'].map((f) => parseRecept(`recepten/${f}`, lees(f)) as Recept)
+  return [PASTA, WRAPS].map((t) => parseRecept(`recepten/${t}.md`, leesVoorbeeld(`${t}.md`)) as Recept)
 }
 
 export class NepRepo {
   recepten_ = voorbeeldRecepten()
   fouten_: { pad: string; fout: string }[] = []
-  plannen_: { plan: WeekPlan; sha: string }[] = []
+  menu_: { menu: Menu; sha: string } | null = null
   status_: KeepStatus | null = null
   huishouden = 2
-  vastgezet: { plan: WeekPlan; sha: string | null }[] = []
-  zetVastFout: Error | null = null
+  geschreven: { menu: Menu; sha: string | null; bericht: string }[] = []
+  zetFout: Error | null = null
   leesFout: Error | null = null
 
   async recepten() {
     if (this.leesFout) throw this.leesFout
-    return { recepten: this.recepten_, fouten: this.fouten_, verpakkingen: parseVerpakkingen(lees('_verpakkingen.md')) }
+    return { recepten: this.recepten_, fouten: this.fouten_, verpakkingen: parseVerpakkingen(leesVoorbeeld('_verpakkingen.md')) }
   }
-  async plannen() { return this.plannen_ }
+  async menu() { return this.menu_ }
   async instellingen() { return { huishouden: this.huishouden } }
   async keepStatus() { return this.status_ }
-  async zetVast(plan: WeekPlan, sha: string | null) {
-    if (this.zetVastFout) throw this.zetVastFout
-    this.vastgezet.push({ plan, sha })
-    const nieuw = `sha${this.vastgezet.length}`
-    this.plannen_ = [...this.plannen_.filter((p) => p.plan.week !== plan.week), { plan, sha: nieuw }]
+  async zetMenu(menu: Menu, sha: string | null, bericht: string) {
+    if (this.zetFout) throw this.zetFout
+    this.geschreven.push({ menu, sha, bericht })
+    const nieuw = `sha${this.geschreven.length}`
+    this.menu_ = { menu, sha: nieuw }
     return nieuw
   }
 }

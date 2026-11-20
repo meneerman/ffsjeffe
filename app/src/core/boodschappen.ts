@@ -1,20 +1,20 @@
 import { normaliseer, zuiver } from './eenheden'
 import { sleutel } from './recepten'
-import type { Recept, Slot, Verpakkingen } from './types'
+import type { Gerecht, Recept, Verpakkingen } from './types'
 
-/** Opgeteld over de week, in basiseenheid. hoeveelheid null = naar smaak. */
+/** Opgeteld over het menu, in basiseenheid. hoeveelheid null = naar smaak. */
 export type Behoefte = { naam: string; hoeveelheid: number | null; eenheid: string | null }
 
-export function schaalfactor(recept: Recept, dagen: number, huishouden: number): number {
-  return (huishouden * dagen) / recept.personen
+export function schaalfactor(recept: Recept, eters: number): number {
+  return (eters * recept.avonden) / recept.porties
 }
 
-export function behoeften(slots: Slot[], recepten: Record<string, Recept>, huishouden: number): Behoefte[] {
+export function behoeften(gerechten: Gerecht[], recepten: Record<string, Recept>): Behoefte[] {
   const totaal = new Map<string, Behoefte>()
-  for (const slot of slots) {
-    const r = recepten[slot.receptId]
+  for (const g of gerechten) {
+    const r = recepten[g.receptId]
     if (!r) continue
-    const factor = schaalfactor(r, slot.dagen, huishouden)
+    const factor = schaalfactor(r, g.eters)
     for (const i of r.ingredienten) {
       const naam = sleutel(i.naam)
       if (i.hoeveelheid === null) {

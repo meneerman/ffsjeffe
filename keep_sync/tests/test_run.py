@@ -160,3 +160,25 @@ def test_main_writes_failed_status_on_login_error(tmp_path, monkeypatch):
     assert run.main() == 1
     status = read(tmp_path, "keep-status.json")
     assert status["ok"] is False and "login mislukt" in status["melding"] and "aas_geheim123" not in status["melding"]
+
+
+def _met_eigen_regel(tmp_path):
+    (tmp_path / "weekmenu").mkdir(parents=True, exist_ok=True)
+    (tmp_path / "weekmenu" / "keep-state.json").write_text(json.dumps({"lijst_id": "L1", "leeggemaakt": None, "regels": {"a": {"ronde": R, "tekst": "Melk"}}}))
+    return FakeKeepList(items=[Item("a", "Melk", False), Item("x", "Brood", False)])
+
+
+def test_corrupt_menu_touches_nothing_and_reports(tmp_path):
+    keep = _met_eigen_regel(tmp_path)
+    (tmp_path / "weekmenu" / "menu.json").write_text("{kapot")
+    status = run.sync(tmp_path, keep, NOW)
+    assert keep.texts() == ["Melk", "Brood"]
+    assert read(tmp_path, "keep-state.json")["regels"] == {"a": {"ronde": R, "tekst": "Melk"}}
+    assert status["ok"] is False and "menu.json" in status["melding"]
+
+
+def test_v1_menu_touches_nothing(tmp_path):
+    keep = _met_eigen_regel(tmp_path)
+    (tmp_path / "weekmenu" / "menu.json").write_text(json.dumps({"week": "2026-W48"}))
+    run.sync(tmp_path, keep, NOW)
+    assert keep.texts() == ["Melk", "Brood"]

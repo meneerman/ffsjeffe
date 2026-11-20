@@ -47,9 +47,13 @@ def _write(data_dir: Path, name: str, content: dict) -> None:
 
 def sync(data_dir: Path, keep: KeepList, now: datetime) -> dict:
     state = _read(data_dir / "weekmenu" / "keep-state.json") or {}
-    menu = _read(data_dir / "weekmenu" / "menu.json")
-    if menu is not None and menu.get("versie") != 2:
-        menu = None
+    menu_pad = data_dir / "weekmenu" / "menu.json"
+    menu = _read(menu_pad)
+    if menu_pad.exists() and (menu is None or menu.get("versie") != 2):
+        # Nooit op een onleesbaar menu handelen: dat zou alle open app-regels weghalen.
+        status = {"tijd": now.isoformat(), "ok": False, "melding": "menu.json is onleesbaar of heeft een oud formaat; Keep is niet aangepast.", "weken": []}
+        _write(data_dir, "keep-status.json", status)
+        return status
     same_list = state.get("lijst_id") == keep.id
     own: dict[str, dict] = state.get("regels", {}) if same_list else {}
     own = {i: r for i, r in own.items() if isinstance(r, dict) and "ronde" in r}  # oud formaat telt niet
@@ -121,7 +125,10 @@ def main() -> int:
             os.environ.get("KEEP_DEVICE_ID") or None,
             os.environ.get("KEEP_LIST_TITLE", "boodschappenlijst"),
         )
-        sync(data_dir, keep, now)
+        status = sync(data_dir, keep, now)
+        if not status["ok"]:
+            print(f"Keep niet bijgewerkt: {status['melding']}", file=sys.stderr)
+            return 1
         print("Keep bijgewerkt")
         return 0
     except Exception as e:  # elke fout zichtbaar maken, zonder geheimen

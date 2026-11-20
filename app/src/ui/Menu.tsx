@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { behoeften, boodschappenRegels } from '../core/boodschappen'
 import { leegmaken, markeerGegeten, vastzetten, zaadVoor } from '../core/menu'
-import type { Gerecht, Menu as MenuT, Recept } from '../core/types'
+import type { Menu as MenuT, Recept } from '../core/types'
 import { dagenGeleden, kandidaten, stelVoor } from '../core/voorstel'
 import { VerouderdFout } from '../data/github'
 import type { SchermProps } from './App'

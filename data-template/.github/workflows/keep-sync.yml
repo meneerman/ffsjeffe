@@ -23,7 +23,7 @@ jobs:
           python-version: "3.12"
       - run: pip install -r code/keep_sync/requirements.txt
       - name: Keep bijwerken
-        run: python -I -m keep_sync.run .
+        run: python -P -m keep_sync.run .
         env:
           PYTHONPATH: code
           KEEP_EMAIL: ${{ secrets.KEEP_EMAIL }}

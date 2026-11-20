@@ -1,0 +1,26 @@
+name: keep-spike
+on:
+  workflow_dispatch:
+    inputs:
+      write:
+        description: "Schrijftest (voegt 'ffsjeffe test' toe en haalt hem weer weg)"
+        type: boolean
+        default: false
+jobs:
+  spike:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          repository: meneerman/ffsjeffe
+          ref: v1
+          path: code
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - run: pip install -r code/keep_sync/requirements.txt
+      - run: python -I code/spikes/keep_spike.py ${{ inputs.write && '--write' || '' }}
+        env:
+          KEEP_EMAIL: ${{ secrets.KEEP_EMAIL }}
+          KEEP_MASTER_TOKEN: ${{ secrets.KEEP_MASTER_TOKEN }}
+          KEEP_DEVICE_ID: ${{ secrets.KEEP_DEVICE_ID }}

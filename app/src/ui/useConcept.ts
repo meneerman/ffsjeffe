@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { zaadVoor } from '../core/menu'
 import type { Gerecht, Menu } from '../core/types'
 import { stelVoor } from '../core/voorstel'
@@ -33,11 +33,18 @@ export function useConcept(data: AppData, menu: Menu | null) {
     [menu, recepten, verpakkingen, instellingen.huishouden],
   )
 
+  const gerechten = (geldig?.gerechten ?? basis).filter((g) => perId.has(g.receptId))
+  const laatste = useRef(gerechten)
+  laatste.current = gerechten
+
   return {
-    gerechten: (geldig?.gerechten ?? basis).filter((g) => perId.has(g.receptId)),
+    gerechten,
     heeftConcept: geldig !== null,
-    wijzig(gerechten: Gerecht[]) {
-      const c = { gerechten, sinds: new Date().toISOString() }
+    /** Accepteert een lijst of een functie op de nieuwste lijst (veilig vanuit timers). */
+    wijzig(nieuw: Gerecht[] | ((huidig: Gerecht[]) => Gerecht[])) {
+      const lijst = typeof nieuw === 'function' ? nieuw(laatste.current) : nieuw
+      laatste.current = lijst
+      const c = { gerechten: lijst, sinds: new Date().toISOString() }
       schrijf(SLEUTEL, c)
       setConcept(c)
     },

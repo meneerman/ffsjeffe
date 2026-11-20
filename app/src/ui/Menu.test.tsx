@@ -9,6 +9,11 @@ import { Menu } from './Menu'
 import { NepRepo, PASTA, WRAPS } from './nepRepo'
 import type { AppData } from './useData'
 
+// jsdom heeft geen PointerEvent met coördinaten
+if (!('PointerEvent' in window)) {
+  ;(window as unknown as { PointerEvent: typeof MouseEvent }).PointerEvent = class extends MouseEvent {} as typeof MouseEvent
+}
+
 const NU = new Date('2026-11-21T12:00:00Z')
 beforeEach(() => localStorage.clear())
 afterEach(cleanup)
@@ -25,6 +30,10 @@ async function toon(repo: NepRepo, recepten: Recept[] = [], herlaad = vi.fn()) {
   const data: AppData = { ...r, menu: repo.menu_, instellingen: { huishouden: 2 }, keepStatus: null }
   render(<Menu data={data} repo={repo} naam="Menno" herlaad={herlaad} hash="#/" nu={() => NU} />)
   return { data, herlaad }
+}
+async function verwijderBevestigd(titel: string) {
+  await userEvent.click(screen.getByRole('button', { name: `Verwijder ${titel}` }))
+  await userEvent.click(within(screen.getByRole('group', { name: `${titel} verwijderen?` })).getByRole('button', { name: 'Verwijder' }))
 }
 const kaarten = () => screen.queryAllByTestId('gerecht')
 const titels = () => kaarten().map((k) => within(k).getByRole('link').textContent)
@@ -43,30 +52,54 @@ test('x dagen geleden', async () => {
   expect(screen.getByText(/18 dagen geleden/)).toBeTruthy()
 })
 
-test('＋ Gerecht erbij: kiezen, volgende, geen maximum', async () => {
+test('＋ Gerecht erbij: Tinder-stapel met nee, erbij en geen maximum', async () => {
   await toon(new NepRepo(), extra(6))
   await userEvent.click(screen.getByRole('button', { name: /Gerecht erbij/ }))
-  const dlg = screen.getByRole('dialog')
-  const eerste = within(dlg).getByRole('heading').textContent
-  await userEvent.click(within(dlg).getByRole('button', { name: 'Volgende' }))
-  expect(within(screen.getByRole('dialog')).getByRole('heading').textContent).not.toBe(eerste)
-  await userEvent.click(within(screen.getByRole('dialog')).getByRole('button', { name: 'Kies' }))
-  expect(kaarten()).toHaveLength(4)
+  const dlg = () => screen.getByRole('dialog')
+  const boven = () => within(dlg()).getByTestId('bovenste').querySelector('h2')!.textContent
+  const eerste = boven()
+  expect(within(dlg()).getAllByTestId('deck-kaart').length).toBeGreaterThanOrEqual(2) // volgende ligt eronder
+  await userEvent.click(within(dlg()).getByRole('button', { name: 'Nee' }))
+  await waitFor(() => expect(boven()).not.toBe(eerste))
+  await userEvent.click(within(dlg()).getByRole('button', { name: 'Erbij' }))
+  await waitFor(() => expect(kaarten()).toHaveLength(4))
   for (let i = 0; i < 2; i++) {
     await userEvent.click(screen.getByRole('button', { name: /Gerecht erbij/ }))
-    await userEvent.click(within(screen.getByRole('dialog')).getByRole('button', { name: 'Kies' }))
+    await userEvent.click(within(dlg()).getByRole('button', { name: 'Erbij' }))
+    await waitFor(() => expect(kaarten()).toHaveLength(5 + i))
   }
-  expect(kaarten()).toHaveLength(6)
 })
 
-test('verwijderen met ongedaan maken op dezelfde plek', async () => {
+test('stapel: naar rechts slepen voorbij de drempel = erbij, kort slepen veert terug', async () => {
+  await toon(new NepRepo(), extra(4))
+  await userEvent.click(screen.getByRole('button', { name: /Gerecht erbij/ }))
+  const kaart = within(screen.getByRole('dialog')).getByTestId('bovenste')
+  fireEvent.pointerDown(kaart, { clientX: 100, clientY: 100 })
+  fireEvent.pointerMove(kaart, { clientX: 140, clientY: 100 })
+  fireEvent.pointerUp(kaart, { clientX: 140, clientY: 100 })
+  expect(kaarten()).toHaveLength(3)
+  fireEvent.pointerDown(kaart, { clientX: 100, clientY: 100 })
+  fireEvent.pointerMove(kaart, { clientX: 300, clientY: 100 })
+  expect(within(kaart).getByText('ERBIJ')).toBeTruthy()
+  fireEvent.pointerUp(kaart, { clientX: 300, clientY: 100 })
+  await waitFor(() => expect(kaarten()).toHaveLength(4))
+})
+
+test('verwijderen vraagt eerst om bevestiging', async () => {
   await toon(new NepRepo(), extra(3))
   const voor = titels()
   await userEvent.click(screen.getByRole('button', { name: `Verwijder ${voor[1]}` }))
-  await waitFor(() => expect(titels()).toEqual([voor[0], voor[2]]))
-  expect(screen.getByText(`${voor[1]} verwijderd`)).toBeTruthy()
-  await userEvent.click(screen.getByRole('button', { name: 'Ongedaan maken' }))
+  const vraag = screen.getByRole('group', { name: `${voor[1]} verwijderen?` })
+  await userEvent.click(within(vraag).getByRole('button', { name: 'Annuleren' }))
   expect(titels()).toEqual(voor)
+  await userEvent.click(screen.getByRole('button', { name: `Verwijder ${voor[1]}` }))
+  await userEvent.click(within(screen.getByRole('group', { name: `${voor[1]} verwijderen?` })).getByRole('button', { name: 'Verwijder' }))
+  await waitFor(() => expect(titels()).toEqual([voor[0], voor[2]]))
+})
+
+test('geen veeglaag meer onder de kaarten', async () => {
+  await toon(new NepRepo(), extra(3))
+  expect(document.querySelector('.veeg-achter')).toBeNull()
 })
 
 test('eters − + passen eters en boodschappen aan, minimaal 1', async () => {
@@ -119,7 +152,8 @@ test('gegeten-vinkje alleen op vastgezette gerechten, heen en terug', async () =
   repo.menu_ = { menu: menu([gerecht(PASTA)], { laatstGegeten: { [PASTA]: '2026-10-01' } }), sha: 's' }
   await toon(repo)
   await userEvent.click(screen.getByRole('button', { name: /Gerecht erbij/ }))
-  await userEvent.click(within(screen.getByRole('dialog')).getByRole('button', { name: 'Kies' }))
+  await userEvent.click(within(screen.getByRole('dialog')).getByRole('button', { name: 'Erbij' }))
+  await waitFor(() => expect(kaarten()).toHaveLength(2))
   expect(screen.getAllByRole('button', { name: / gegeten$/ })).toHaveLength(1)
   await userEvent.click(screen.getByRole('button', { name: `${PASTA} gegeten` }))
   await screen.findByText('✓ gegeten vandaag')
@@ -138,7 +172,7 @@ test('alles wegvegen: leeg menu met Nieuw voorstel', async () => {
   const repo = new NepRepo()
   repo.menu_ = { menu: menu([gerecht(PASTA)]), sha: 's' }
   await toon(repo, extra(3))
-  await userEvent.click(screen.getByRole('button', { name: `Verwijder ${PASTA}` }))
+  await verwijderBevestigd(PASTA)
   await waitFor(() => expect(kaarten()).toHaveLength(0))
   await userEvent.click(screen.getByRole('button', { name: 'Nieuw voorstel' }))
   expect(kaarten()).toHaveLength(3)
@@ -148,7 +182,7 @@ test('een leeg menu vastzetten kan; daarna verschijnt vanzelf een voorstel', asy
   const repo = new NepRepo()
   repo.menu_ = { menu: menu([gerecht(PASTA)]), sha: 's' }
   await toon(repo, extra(3))
-  await userEvent.click(screen.getByRole('button', { name: `Verwijder ${PASTA}` }))
+  await verwijderBevestigd(PASTA)
   await waitFor(() => expect(kaarten()).toHaveLength(0))
   await userEvent.click(screen.getByRole('button', { name: /Op de boodschappenlijst/ }))
   await waitFor(() => expect(repo.geschreven).toHaveLength(1))

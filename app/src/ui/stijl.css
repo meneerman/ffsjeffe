@@ -77,10 +77,13 @@ footer { margin-top: 40px; text-align: center; }
 .trek { display: flex; align-items: flex-end; justify-content: center; overflow: hidden; color: var(--accent); font-size: 13px; transition: height 0.2s var(--veer); }
 .status { margin: -6px 0 4px; }
 .gerechten { list-style: none; padding: 0; margin: 14px 0 0; display: grid; gap: 10px; }
-.gerecht-rij { position: relative; border-radius: var(--radius); overflow: hidden; max-height: 220px; transition: max-height 0.2s ease 0.22s, opacity 0.2s ease 0.22s, margin 0.2s ease 0.22s; }
+.gerecht-rij { position: relative; max-height: 220px; transition: max-height 0.2s ease 0.22s, opacity 0.2s ease 0.22s, margin 0.2s ease 0.22s; }
 .gerecht-rij.uit { max-height: 0; opacity: 0; margin-top: -10px; }
-.veeg-achter { position: absolute; inset: 0; display: flex; align-items: center; justify-content: flex-end; padding-right: 20px; color: #fff; font-weight: 600; font-size: 14px; background: linear-gradient(90deg, #3a1d1d, var(--weg)); border-radius: var(--radius); }
-.gerecht { position: relative; display: flex; align-items: center; gap: 12px; background: #121216; touch-action: pan-y; user-select: none; }
+.gerecht { position: relative; display: flex; align-items: center; gap: 12px; background: #121216; transition: transform 0.25s var(--veer), opacity 0.25s; }
+.gerecht-rij.uit .gerecht { transform: translateX(-24px); opacity: 0; }
+.gerecht.vraagt { border-color: rgba(255, 91, 74, 0.35); }
+.bevestig { display: flex; align-items: center; justify-content: space-between; gap: 12px; width: 100%; min-height: 34px; }
+.bevestig-knoppen { display: flex; gap: 8px; }
 .gerecht-tekst { flex: 1; min-width: 0; }
 .gerecht .titel { display: block; font-size: 16px; font-weight: 500; letter-spacing: -0.01em; text-decoration: none; }
 .gerecht .meta { font-size: 12.5px; margin-top: 3px; }
@@ -115,8 +118,21 @@ footer { margin-top: 40px; text-align: center; }
 .knoppenrij { display: flex; gap: 8px; justify-content: flex-end; margin-top: 16px; }
 .knop.accent { background: var(--accent); color: var(--bg); border-color: var(--accent); font-weight: 600; }
 .knop.gevaar { background: var(--weg); color: #fff; border-color: var(--weg); font-weight: 600; }
-.deck-kaart { margin: 14px 0 4px; padding: 26px 18px; border-radius: var(--radius); background: var(--vlak); border: 1px solid var(--rand); text-align: center; touch-action: pan-y; user-select: none; }
-.deck-kaart .kop-klein { margin: 0 0 6px; }
+.deck-kop { display: flex; justify-content: space-between; align-items: center; }
+.stapel { position: relative; height: 260px; margin: 16px 0 8px; }
+.deck-kaart-wrap { position: absolute; inset: 0; z-index: 2; touch-action: none; user-select: none; cursor: grab; }
+.deck-kaart-wrap:active { cursor: grabbing; }
+.deck-kaart { position: absolute; inset: 0; display: flex; flex-direction: column; justify-content: flex-end; padding: 22px 20px; border-radius: 26px; border: 1px solid var(--rand); overflow: hidden; background: radial-gradient(120% 90% at 85% 0%, rgba(124, 92, 255, 0.28), transparent 60%), radial-gradient(90% 70% at 0% 100%, rgba(255, 140, 90, 0.12), transparent 60%), #16161b; box-shadow: 0 18px 40px rgba(0, 0, 0, 0.45); }
+.deck-kaart.onder { z-index: 1; filter: brightness(0.7); transition: transform 0.2s var(--veer); }
+.deck-kaart .kop-klein { margin: 0 0 6px; font-size: 32px; line-height: 1.05; }
+.stempel { position: absolute; top: 22px; padding: 4px 12px; border: 2px solid; border-radius: 10px; font-weight: 700; letter-spacing: 0.12em; font-size: 15px; pointer-events: none; }
+.stempel.erbij { left: 20px; color: var(--accent); transform: rotate(-12deg); }
+.stempel.nee { right: 20px; color: var(--weg); transform: rotate(12deg); }
+.deck-knoppen { display: flex; justify-content: center; gap: 28px; margin-top: 8px; }
+.rond { width: 64px; height: 64px; border-radius: 50%; border: 1px solid var(--rand); background: var(--vlak-sterk); font-size: 24px; transition: transform 0.15s var(--veer); }
+.rond:active { transform: scale(0.9); }
+.rond.nee { color: var(--weg); }
+.rond.erbij { background: var(--accent); color: var(--bg); border-color: var(--accent); }
 .deck-leeg { padding: 24px 0; text-align: center; }
 
 /* Kookpagina */

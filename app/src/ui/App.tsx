@@ -4,6 +4,9 @@ import { Instellingen } from './Instellingen'
 import { bewaarVerbinding, leesVerbinding, type Opgeslagen } from './opslag'
 import { useData, type AppData, type Repo } from './useData'
 import { Week } from './Week'
+import { Boodschappen } from './Boodschappen'
+import { KeepStatusMelding } from './KeepStatus'
+import { ReceptPagina } from './Recept'
 import './stijl.css'
 
 export function useHash(): string {
@@ -19,7 +22,25 @@ export function useHash(): string {
 export type SchermProps = { data: AppData; repo: Repo; naam: string; herlaad: () => void; hash: string }
 
 function Inhoud(p: SchermProps) {
-  return <Week {...p} />
+  const { data, repo } = p
+  if (p.hash.startsWith('#/recept/')) {
+    const id = decodeURIComponent(p.hash.slice('#/recept/'.length))
+    const r = data.recepten.find((x) => x.id === id)
+    return r ? <ReceptPagina recept={r} huishouden={data.instellingen.huishouden} /> : (
+      <p className="kaart">Recept niet gevonden. <a href="#/">Terug</a></p>
+    )
+  }
+  return (
+    <Week
+      {...p}
+      Extra={({ slots, perId, vastgezet }) => (
+        <>
+          <KeepStatusMelding key={vastgezet?.vastgezetOp ?? 'geen'} repo={repo} vastgezetOp={vastgezet?.vastgezetOp ?? null} begin={data.keepStatus} />
+          <Boodschappen slots={slots} perId={perId} huishouden={data.instellingen.huishouden} verpakkingen={data.verpakkingen} />
+        </>
+      )}
+    />
+  )
 }
 
 export default function App({ maakRepo = (v: Verbinding) => new DataRepo(v), Scherm = Inhoud }: { maakRepo?: (v: Verbinding) => Repo; Scherm?: (p: SchermProps) => JSX.Element }) {

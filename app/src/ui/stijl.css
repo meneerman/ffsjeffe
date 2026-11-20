@@ -50,3 +50,7 @@ footer { margin-top: 32px; text-align: center; font-size: .9rem; }
 .paneel { width: 100%; max-width: 560px; }
 .ruilkaart { padding: 24px 8px; text-align: center; touch-action: pan-y; user-select: none; }
 .ruilkaart h2 { font-size: 1.3rem; }
+.melding.goed { color: var(--accent); }
+.ingredienten, .boodschappen { padding-left: 32px; }
+.ingredienten li, .boodschappen li { margin: 2px 0; }
+.bereiding { white-space: pre-wrap; }

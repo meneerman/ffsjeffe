@@ -33,3 +33,20 @@ button:disabled { opacity: .5; cursor: default; }
 .melding.fout { color: var(--fout); }
 .melding.waarschuwing { color: var(--waarschuwing); padding-left: 18px; }
 footer { margin-top: 32px; text-align: center; font-size: .9rem; }
+.knoppen { display: flex; gap: 8px; flex-wrap: wrap; margin: 12px 0; }
+.knoppen .primair { margin-left: auto; }
+.status { margin: 4px 0 8px; }
+.klein { font-size: .85rem; }
+.gerechten { list-style: none; padding: 0; margin: 0; }
+.gerecht { display: flex; align-items: center; gap: 10px; touch-action: manipulation; }
+.gerecht.sleept { opacity: .8; box-shadow: 0 6px 18px rgba(0,0,0,.18); position: relative; z-index: 1; }
+.gerecht .greep { cursor: grab; color: var(--zacht); padding: 4px; touch-action: none; user-select: none; }
+.gerecht .dag { font-weight: 700; min-width: 3.2em; color: var(--accent); }
+.gerecht .midden { flex: 1; min-width: 0; }
+.gerecht .midden a { font-weight: 600; text-decoration: none; color: var(--tekst); }
+.gerecht .acties { display: flex; gap: 4px; }
+.gerecht .acties button { padding: 6px 9px; }
+.paneel-achtergrond { position: fixed; inset: 0; background: rgba(0,0,0,.45); display: flex; align-items: flex-end; justify-content: center; padding: 16px; }
+.paneel { width: 100%; max-width: 560px; }
+.ruilkaart { padding: 24px 8px; text-align: center; touch-action: pan-y; user-select: none; }
+.ruilkaart h2 { font-size: 1.3rem; }

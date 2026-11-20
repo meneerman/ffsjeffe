@@ -3,6 +3,7 @@ import { DataRepo, TokenFout, type Verbinding } from '../data/github'
 import { Instellingen } from './Instellingen'
 import { bewaarVerbinding, leesVerbinding, type Opgeslagen } from './opslag'
 import { useData, type AppData, type Repo } from './useData'
+import { Week } from './Week'
 import './stijl.css'
 
 export function useHash(): string {
@@ -17,8 +18,8 @@ export function useHash(): string {
 
 export type SchermProps = { data: AppData; repo: Repo; naam: string; herlaad: () => void; hash: string }
 
-function Inhoud({ data }: SchermProps) {
-  return <p className="zacht">{data.recepten.length} recepten geladen.</p>
+function Inhoud(p: SchermProps) {
+  return <Week {...p} />
 }
 
 export default function App({ maakRepo = (v: Verbinding) => new DataRepo(v), Scherm = Inhoud }: { maakRepo?: (v: Verbinding) => Repo; Scherm?: (p: SchermProps) => JSX.Element }) {

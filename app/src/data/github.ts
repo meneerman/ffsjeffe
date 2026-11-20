@@ -1,5 +1,5 @@
 import { parseRecept, parseVerpakkingen } from '../core/recepten'
-import type { Instellingen, Recept, ReceptFout, Verpakkingen, WeekPlan } from '../core/types'
+import type { Instellingen, Menu, Recept, ReceptFout, Verpakkingen } from '../core/types'
 
 export type Verbinding = { owner: string; repo: string; token: string }
 export type KeepStatus = { tijd: string; ok: boolean; melding: string; weken: string[] }
@@ -8,7 +8,7 @@ export const STANDAARD_REPO = { owner: 'meneerman', repo: 'ffsjeffe-data' }
 
 export class VerouderdFout extends Error {
   constructor() {
-    super('Iemand anders heeft deze week net aangepast. Herlaad en probeer opnieuw.')
+    super('Iemand anders heeft het menu net aangepast. Herlaad en probeer opnieuw.')
   }
 }
 export class TokenFout extends Error {
@@ -28,7 +28,7 @@ export function vanBase64(b64: string): string {
   return new TextDecoder().decode(Uint8Array.from(binair, (c) => c.charCodeAt(0)))
 }
 
-const PLANNEN = 'weekmenu/plannen/'
+const MENU = 'weekmenu/menu.json'
 
 export class DataRepo {
   constructor(private v: Verbinding, private f: typeof fetch = (...a) => fetch(...a)) {}
@@ -81,10 +81,15 @@ export class DataRepo {
     return { recepten, fouten, verpakkingen: verpakkingsBestand ? parseVerpakkingen(verpakkingsBestand.inhoud) : {} }
   }
 
-  async plannen(): Promise<{ plan: WeekPlan; sha: string }[]> {
-    const paden = (await this.paden()).filter((p) => p.startsWith(PLANNEN) && p.endsWith('.json'))
-    const uit = await Promise.all(paden.map(async (p) => ({ b: await this.bestand(p) })))
-    return uit.filter((x) => x.b).map(({ b }) => ({ plan: JSON.parse(b!.inhoud) as WeekPlan, sha: b!.sha }))
+  async menu(): Promise<{ menu: Menu; sha: string } | null> {
+    const b = await this.bestand(MENU)
+    if (!b) return null
+    try {
+      const menu = JSON.parse(b.inhoud) as Menu
+      return menu && menu.versie === 2 && Array.isArray(menu.gerechten) ? { menu, sha: b.sha } : null
+    } catch {
+      return null
+    }
   }
 
   async instellingen(): Promise<Instellingen> {
@@ -97,15 +102,20 @@ export class DataRepo {
     return b ? (JSON.parse(b.inhoud) as KeepStatus) : null
   }
 
-  async zetVast(plan: WeekPlan, sha: string | null): Promise<string> {
+  async zetMenu(menu: Menu, sha: string | null, bericht: string): Promise<string> {
     const body: Record<string, string> = {
-      message: `Weekmenu ${plan.week} vastgezet door ${plan.door}`,
-      content: naarBase64(JSON.stringify(plan, null, 2) + '\n'),
+      message: bericht,
+      content: naarBase64(JSON.stringify(menu, null, 2) + '\n'),
       branch: 'main',
     }
     if (sha) body.sha = sha
-    const res = await this.vraag(`contents/${PLANNEN}${plan.week}.json`, { method: 'PUT', body: JSON.stringify(body) }, [409, 422])
-    if (res.status === 409 || res.status === 422) throw new VerouderdFout()
+    const res = await this.vraag(`contents/${MENU}`, { method: 'PUT', body: JSON.stringify(body) }, [409, 422])
+    if (res.status === 409) throw new VerouderdFout()
+    if (res.status === 422) {
+      const tekst = await res.text()
+      if (/sha/i.test(tekst)) throw new VerouderdFout()
+      throw new Error('GitHub gaf status 422')
+    }
     return ((await res.json()) as { content: { sha: string } }).content.sha
   }
 }

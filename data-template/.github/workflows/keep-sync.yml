@@ -1,0 +1,41 @@
+name: keep-sync
+on:
+  push:
+    paths: ["weekmenu/plannen/**"]
+  workflow_dispatch:
+concurrency:
+  group: keep-sync
+  cancel-in-progress: false
+permissions:
+  contents: write
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/checkout@v4
+        with:
+          repository: meneerman/ffsjeffe
+          ref: v1
+          path: code
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - run: pip install -r code/keep_sync/requirements.txt
+      - name: Keep bijwerken
+        run: python -I -m keep_sync.run .
+        env:
+          PYTHONPATH: code
+          KEEP_EMAIL: ${{ secrets.KEEP_EMAIL }}
+          KEEP_MASTER_TOKEN: ${{ secrets.KEEP_MASTER_TOKEN }}
+          KEEP_DEVICE_ID: ${{ secrets.KEEP_DEVICE_ID }}
+      - name: Status en administratie bewaren
+        if: always()
+        run: |
+          git config user.name "ffsjeffe-bot"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add weekmenu/keep-state.json weekmenu/keep-status.json 2>/dev/null || true
+          git diff --cached --quiet && exit 0
+          git commit -m "Keep-sync: status bijgewerkt"
+          for i in 1 2 3; do git pull --rebase -q && git push -q && exit 0; sleep 3; done
+          exit 1

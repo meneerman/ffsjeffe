@@ -1,77 +1,76 @@
-from keep_sync.diff import Changes, Item, next_state, plan_changes
+from keep_sync.diff import Changes, Item, clear_ids, next_state, plan_changes
 
-W = "2026-W48"
-V = "2026-W49"
+R = "2026-11-21T10:00:00.000Z"
+R2 = "2026-11-28T10:00:00.000Z"
 
 
 def own(**regels):
-    return {i: {"week": w, "tekst": t} for i, (w, t) in regels.items()}
+    return {i: {"ronde": r, "tekst": t} for i, (r, t) in regels.items()}
 
 
-def test_empty_state_adds_everything():
-    ch = plan_changes([(W, "Melk"), (W, "Ui 2")], {}, [Item("x", "Brood", False)])
-    assert ch.add == [(W, "Melk"), (W, "Ui 2")] and ch.delete_ids == []
+def test_new_wishes_are_added():
+    ch = plan_changes([(R, "Melk"), (R, "Ui 2")], {}, [Item("x", "Brood", False)])
+    assert ch.add == [(R, "Melk"), (R, "Ui 2")] and ch.delete_ids == [] and ch.state_ids == []
 
 
-def test_own_unchecked_line_still_wanted_is_kept_not_readded():
-    ch = plan_changes([(W, "Melk")], own(a=(W, "Melk")), [Item("a", "Melk", False)])
-    assert ch.add == [] and ch.delete_ids == [] and ch.keep_ids == ["a"]
+def test_own_open_line_still_wanted_is_kept():
+    ch = plan_changes([(R, "Melk")], own(a=(R, "Melk")), [Item("a", "Melk", False)])
+    assert ch.add == [] and ch.delete_ids == [] and ch.state_ids == ["a"]
 
 
-def test_own_unchecked_line_no_longer_wanted_is_deleted():
-    ch = plan_changes([], own(a=(W, "Melk")), [Item("a", "Melk", False)])
-    assert ch.delete_ids == ["a"] and ch.keep_ids == []
+def test_checked_line_same_round_is_not_readded_and_stays_in_state():
+    ch = plan_changes([(R, "Melk")], own(a=(R, "Melk")), [Item("a", "Melk", True)])
+    assert ch.add == [] and ch.delete_ids == [] and ch.state_ids == ["a"]
 
 
-def test_own_checked_line_is_never_deleted_and_never_readded():
-    ch = plan_changes([(W, "Melk")], own(a=(W, "Melk")), [Item("a", "Melk", True)])
-    assert ch.delete_ids == [] and ch.add == [] and ch.keep_ids == ["a"]
+def test_checked_line_old_round_does_not_satisfy_new_round():
+    ch = plan_changes([(R2, "Melk")], own(a=(R, "Melk")), [Item("a", "Melk", True)])
+    assert ch.add == [(R2, "Melk")] and ch.delete_ids == [] and ch.state_ids == ["a"]
 
 
-def test_own_checked_line_no_longer_wanted_is_left_alone():
-    ch = plan_changes([], own(a=(W, "Melk")), [Item("a", "Melk", True)])
-    assert ch.delete_ids == [] and ch.keep_ids == []
+def test_unwanted_open_line_is_deleted_and_forgotten():
+    ch = plan_changes([], own(a=(R, "Melk")), [Item("a", "Melk", False)])
+    assert ch.delete_ids == ["a"] and ch.state_ids == []
 
 
-def test_other_peoples_lines_are_never_touched_even_with_same_text():
+def test_unwanted_checked_line_stays_in_keep_and_state():
+    ch = plan_changes([], own(a=(R, "Melk")), [Item("a", "Melk", True)])
+    assert ch.delete_ids == [] and ch.state_ids == ["a"]
+
+
+def test_unwanted_edited_line_stays_in_keep_but_leaves_state():
+    ch = plan_changes([], own(a=(R, "Melk")), [Item("a", "Melk halfvol", False)])
+    assert ch.delete_ids == [] and ch.state_ids == []
+
+
+def test_missing_own_line_satisfies_wish_while_wanted_and_is_forgotten_after():
+    wanted = plan_changes([(R, "Melk")], own(a=(R, "Melk")), [])
+    assert wanted.add == [] and wanted.state_ids == ["a"]
+    unwanted = plan_changes([], own(a=(R, "Melk")), [])
+    assert unwanted.delete_ids == [] and unwanted.state_ids == []
+
+
+def test_other_peoples_lines_never_touched():
     ch = plan_changes([], {}, [Item("b", "Melk", False)])
     assert ch.delete_ids == [] and ch.add == []
 
 
-def test_own_line_removed_by_someone_is_not_readded():
-    ch = plan_changes([(W, "Melk")], own(a=(W, "Melk")), [])
-    assert ch.add == [] and ch.delete_ids == [] and ch.keep_ids == ["a"]
+def test_duplicate_own_lines_keep_first_delete_other_open():
+    ch = plan_changes([(R, "Melk")], own(a=(R, "Melk"), b=(R, "Melk")), [Item("a", "Melk", False), Item("b", "Melk", False)])
+    assert ch.state_ids == ["a"] and ch.delete_ids == ["b"]
 
 
-def test_own_line_edited_by_someone_is_left_alone_and_not_readded():
-    ch = plan_changes([(W, "Melk")], own(a=(W, "Melk")), [Item("a", "Melk halfvol", False)])
-    assert ch.delete_ids == [] and ch.add == []
+def test_duplicate_wishes_added_once():
+    assert plan_changes([(R, "Melk"), (R, "Melk")], {}, []).add == [(R, "Melk")]
 
 
-def test_own_line_edited_and_no_longer_wanted_is_not_deleted():
-    ch = plan_changes([], own(a=(W, "Melk")), [Item("a", "Melk halfvol", False)])
-    assert ch.delete_ids == []
+def test_clear_ids_removes_open_and_checked_not_edited_not_missing():
+    o = own(a=(R, "Melk"), b=(R, "Kaas"), c=(R, "Ui"), d=(R, "Brood"))
+    items = [Item("a", "Melk", False), Item("b", "Kaas", True), Item("c", "Ui rood", False)]
+    assert clear_ids(o, items) == ["a", "b"]
 
 
-def test_duplicate_lines_within_a_week_added_once():
-    assert plan_changes([(W, "Melk"), (W, "Melk")], {}, []).add == [(W, "Melk")]
-
-
-def test_same_line_in_two_weeks_is_added_twice():
-    assert plan_changes([(W, "Ui 2"), (V, "Ui 2")], {}, []).add == [(W, "Ui 2"), (V, "Ui 2")]
-
-
-def test_bought_line_of_this_week_does_not_satisfy_next_week():
-    ch = plan_changes([(W, "Melk"), (V, "Melk")], own(a=(W, "Melk")), [Item("a", "Melk", True)])
-    assert ch.add == [(V, "Melk")]
-
-
-def test_two_live_own_lines_for_same_wish_keeps_one_deletes_other():
-    ch = plan_changes([(W, "Melk")], own(a=(W, "Melk"), b=(W, "Melk")), [Item("a", "Melk", False), Item("b", "Melk", False)])
-    assert ch.keep_ids == ["a"] and ch.delete_ids == ["b"]
-
-
-def test_next_state_keeps_wanted_markers_and_adds_new():
-    o = own(a=(W, "Melk"), b=(W, "Ui"), c=(W, "Kaas"))
-    ch = Changes(add=[(W, "Peper")], delete_ids=["c"], keep_ids=["a", "b"])
-    assert next_state(o, ch, {"n": (W, "Peper")}) == own(a=(W, "Melk"), b=(W, "Ui"), n=(W, "Peper"))
+def test_next_state_keeps_state_ids_and_adds_new():
+    o = own(a=(R, "Melk"), b=(R, "Ui"))
+    ch = Changes(add=[(R, "Peper")], delete_ids=["b"], state_ids=["a"])
+    assert next_state(o, ch, {"n": (R, "Peper")}) == own(a=(R, "Melk"), n=(R, "Peper"))

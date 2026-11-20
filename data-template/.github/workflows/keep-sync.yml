@@ -1,7 +1,7 @@
 name: keep-sync
 on:
   push:
-    paths: ["weekmenu/plannen/**"]
+    paths: ["weekmenu/menu.json"]
   workflow_dispatch:
 concurrency:
   group: keep-sync

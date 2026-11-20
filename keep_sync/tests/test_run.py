@@ -1,14 +1,13 @@
 import json
-from datetime import date, datetime
+from datetime import datetime
 from pathlib import Path
-
-import pytest
 
 from keep_sync import run
 from keep_sync.diff import Item
 
-TODAY = date(2026, 11, 23)  # maandag, week 2026-W48
 NOW = datetime(2026, 11, 23, 9, 0)
+R = "2026-11-21T10:00:00.000Z"
+R2 = "2026-11-28T10:00:00.000Z"
 
 
 class FakeKeepList:
@@ -36,93 +35,117 @@ class FakeKeepList:
     def texts(self):
         return [i.text for i in self._items]
 
+    def check_all(self):
+        self._items = [Item(i.id, i.text, True) for i in self._items]
 
-def write_plan(data: Path, week: str, lines: list[str], status: str = "vastgezet"):
-    d = data / "weekmenu" / "plannen"
+
+def write_menu(data: Path, lines, ronde=R, leegmaken_op=None):
+    d = data / "weekmenu"
     d.mkdir(parents=True, exist_ok=True)
-    (d / f"{week}.json").write_text(json.dumps({"week": week, "status": status, "slots": [], "boodschappen": lines}))
+    menu = {"versie": 2, "ronde": ronde, "gerechten": [], "boodschappen": lines, "vastgezetOp": ronde,
+            "door": "test", "leegmakenOp": leegmaken_op, "laatstGegeten": {}}
+    (d / "menu.json").write_text(json.dumps(menu))
 
 
 def read(data: Path, name: str):
     return json.loads((data / "weekmenu" / name).read_text())
 
 
-def test_isoweek():
-    assert run.isoweek(date(2026, 11, 20)) == "2026-W47"
-    assert run.isoweek(date(2027, 1, 1)) == "2026-W53"
+def test_desired_lines_from_menu():
+    assert run.desired_lines({"ronde": R, "boodschappen": ["Melk", "Ui 2", "Melk"]}) == [(R, "Melk"), (R, "Ui 2")]
 
 
-def test_teplannen_week_matches_the_app():
-    assert run.teplannen_week(date(2026, 11, 23)) == "2026-W48"  # maandag
-    assert run.teplannen_week(date(2026, 11, 27)) == "2026-W48"  # vrijdag
-    assert run.teplannen_week(date(2026, 11, 28)) == "2026-W49"  # zaterdag
-    assert run.teplannen_week(date(2026, 11, 29)) == "2026-W49"  # zondag
+def test_desired_lines_none_or_empty():
+    assert run.desired_lines(None) == []
+    assert run.desired_lines({"ronde": R, "boodschappen": []}) == []
 
 
-def test_desired_lines_ignores_past_weeks_and_concepts(tmp_path):
-    write_plan(tmp_path, "2026-W47", ["Oud"])
-    write_plan(tmp_path, "2026-W48", ["Melk", "Ui 2", "Melk"])
-    write_plan(tmp_path, "2026-W49", ["Melk", "Kaas"])
-    write_plan(tmp_path, "2026-W50", ["Concept"], status="concept")
-    lines, weeks = run.desired_lines(tmp_path / "weekmenu" / "plannen", TODAY)
-    assert lines == [("2026-W48", "Melk"), ("2026-W48", "Ui 2"), ("2026-W49", "Melk"), ("2026-W49", "Kaas")]
-    assert weeks == ["2026-W48", "2026-W49"]
-
-
-def test_desired_lines_on_saturday_skips_the_ending_week(tmp_path):
-    write_plan(tmp_path, "2026-W48", ["Melk"])
-    write_plan(tmp_path, "2026-W49", ["Kaas"])
-    lines, weeks = run.desired_lines(tmp_path / "weekmenu" / "plannen", date(2026, 11, 28))
-    assert lines == [("2026-W49", "Kaas")] and weeks == ["2026-W49"]
-
-
-def test_desired_lines_without_plans_dir_is_empty(tmp_path):
-    assert run.desired_lines(tmp_path / "weekmenu" / "plannen", TODAY) == ([], [])
-
-
-def test_sync_adds_lines_and_records_state(tmp_path):
-    write_plan(tmp_path, "2026-W48", ["Melk", "Ui 2"])
+def test_sync_adds_and_records_round(tmp_path):
+    write_menu(tmp_path, ["Melk", "Ui 2"])
     keep = FakeKeepList(items=[Item("x", "Brood", False)])
-    run.sync(tmp_path, keep, TODAY, NOW)
+    status = run.sync(tmp_path, keep, NOW)
     assert keep.texts() == ["Brood", "Melk", "Ui 2"]
-    assert read(tmp_path, "keep-state.json") == {"lijst_id": "L1", "regels": {
-        "new1": {"week": "2026-W48", "tekst": "Melk"}, "new2": {"week": "2026-W48", "tekst": "Ui 2"}}}
-    assert keep.saved >= 1
+    state = read(tmp_path, "keep-state.json")
+    assert state["regels"] == {"new1": {"ronde": R, "tekst": "Melk"}, "new2": {"ronde": R, "tekst": "Ui 2"}}
+    assert state["lijst_id"] == "L1" and state["leeggemaakt"] is None
+    assert status["ok"] is True and status == read(tmp_path, "keep-status.json")
+
+
+def test_sync_without_menu_does_nothing(tmp_path):
+    keep = FakeKeepList(items=[Item("x", "Brood", False)])
+    run.sync(tmp_path, keep, NOW)
+    assert keep.texts() == ["Brood"]
 
 
 def test_sync_twice_is_idempotent(tmp_path):
-    write_plan(tmp_path, "2026-W48", ["Melk"])
+    write_menu(tmp_path, ["Melk"])
     keep = FakeKeepList()
-    run.sync(tmp_path, keep, TODAY, NOW)
-    run.sync(tmp_path, keep, TODAY, NOW)
+    run.sync(tmp_path, keep, NOW)
+    run.sync(tmp_path, keep, NOW)
     assert keep.texts() == ["Melk"]
-    assert read(tmp_path, "keep-state.json")["regels"] == {"new1": {"week": "2026-W48", "tekst": "Melk"}}
 
 
-def test_sync_after_replanning_removes_only_own_open_lines(tmp_path):
-    write_plan(tmp_path, "2026-W48", ["Melk", "Kaas"])
-    keep = FakeKeepList(items=[Item("x", "Kaas", False)])
-    run.sync(tmp_path, keep, TODAY, NOW)
-    write_plan(tmp_path, "2026-W48", ["Melk"])
-    run.sync(tmp_path, keep, TODAY, NOW)
-    assert sorted(keep.texts()) == ["Kaas", "Melk"]  # eigen "Kaas" weg, die van een ander blijft
-    assert "x" in [i.id for i in keep.items()]
+def test_bought_lines_do_not_come_back_on_repin_same_round(tmp_path):
+    write_menu(tmp_path, ["Melk", "Kaas"])
+    keep = FakeKeepList()
+    run.sync(tmp_path, keep, NOW)
+    keep.check_all()
+    write_menu(tmp_path, ["Melk", "Kaas", "Ui 2"])
+    run.sync(tmp_path, keep, NOW)
+    assert [i.text for i in keep.items() if not i.checked] == ["Ui 2"]
+
+
+def test_new_round_readds_line_bought_last_round(tmp_path):
+    write_menu(tmp_path, ["Melk"])
+    keep = FakeKeepList()
+    run.sync(tmp_path, keep, NOW)
+    keep.check_all()
+    write_menu(tmp_path, ["Melk"], ronde=R2)
+    run.sync(tmp_path, keep, NOW)
+    assert [i.text for i in keep.items() if not i.checked] == ["Melk"]
+
+
+def test_clear_removes_all_own_lines_including_checked_then_records_leeggemaakt(tmp_path):
+    write_menu(tmp_path, ["Melk", "Kaas"])
+    keep = FakeKeepList()
+    run.sync(tmp_path, keep, NOW)
+    keep._items[0] = Item(keep._items[0].id, "Melk", True)  # melk gekocht
+    write_menu(tmp_path, [], leegmaken_op=R2)
+    run.sync(tmp_path, keep, NOW)
+    assert keep.texts() == []
+    state = read(tmp_path, "keep-state.json")
+    assert state["regels"] == {} and state["leeggemaakt"] == R2
+    keep._items.append(Item("x", "Brood", False))
+    run.sync(tmp_path, keep, NOW)  # zelfde leegmakenOp: niets meer
+    assert keep.texts() == ["Brood"]
+
+
+def test_clear_keeps_edited_and_other_peoples_lines(tmp_path):
+    write_menu(tmp_path, ["Melk", "Kaas"])
+    keep = FakeKeepList(items=[Item("x", "Brood", False)])
+    run.sync(tmp_path, keep, NOW)
+    keep._items = [Item(i.id, "Kaas jong" if i.text == "Kaas" else i.text, i.checked) for i in keep._items]
+    write_menu(tmp_path, [], leegmaken_op=R2)
+    run.sync(tmp_path, keep, NOW)
+    assert sorted(keep.texts()) == ["Brood", "Kaas jong"]
+
+
+def test_old_v1_state_is_ignored(tmp_path):
+    (tmp_path / "weekmenu").mkdir()
+    (tmp_path / "weekmenu" / "keep-state.json").write_text(json.dumps({"lijst_id": "L1", "regels": {"x": {"week": "2026-W48", "tekst": "Melk"}}}))
+    write_menu(tmp_path, [], leegmaken_op=R2)
+    keep = FakeKeepList(items=[Item("x", "Melk", False)])
+    run.sync(tmp_path, keep, NOW)
+    assert keep.texts() == ["Melk"]
 
 
 def test_state_of_another_list_is_ignored(tmp_path):
     (tmp_path / "weekmenu").mkdir()
-    (tmp_path / "weekmenu" / "keep-state.json").write_text(json.dumps({"lijst_id": "ANDER", "regels": {"x": {"week": "2026-W48", "tekst": "Melk"}}}))
+    (tmp_path / "weekmenu" / "keep-state.json").write_text(json.dumps({"lijst_id": "ANDER", "leeggemaakt": None, "regels": {"x": {"ronde": R, "tekst": "Melk"}}}))
+    write_menu(tmp_path, [])
     keep = FakeKeepList(items=[Item("x", "Melk", False)])
-    run.sync(tmp_path, keep, TODAY, NOW)
+    run.sync(tmp_path, keep, NOW)
     assert keep.texts() == ["Melk"]
-
-
-def test_status_written_ok(tmp_path):
-    write_plan(tmp_path, "2026-W48", ["Melk"])
-    status = run.sync(tmp_path, FakeKeepList(), TODAY, NOW)
-    assert status == read(tmp_path, "keep-status.json")
-    assert status["ok"] is True and status["weken"] == ["2026-W48"] and status["melding"] == ""
-    assert status["tijd"].startswith("2026-11-23T09:00")
 
 
 def test_main_writes_failed_status_on_login_error(tmp_path, monkeypatch):
@@ -136,34 +159,4 @@ def test_main_writes_failed_status_on_login_error(tmp_path, monkeypatch):
     monkeypatch.setattr("sys.argv", ["run", str(tmp_path)])
     assert run.main() == 1
     status = read(tmp_path, "keep-status.json")
-    assert status["ok"] is False
-    assert "login mislukt" in status["melding"]
-    assert "aas_geheim123" not in status["melding"]
-
-
-def test_bought_lines_do_not_come_back_when_next_week_is_pinned(tmp_path):
-    write_plan(tmp_path, "2026-W48", ["Melk", "Kaas"])
-    keep = FakeKeepList()
-    run.sync(tmp_path, keep, TODAY, NOW)
-    keep._items = [Item(i.id, i.text, True) for i in keep._items]  # alles gekocht
-    write_plan(tmp_path, "2026-W49", ["Peper"])
-    run.sync(tmp_path, keep, date(2026, 11, 25), NOW)  # woensdag, W48 telt nog mee
-    assert [i.text for i in keep.items() if not i.checked] == ["Peper"]
-
-
-def test_repinning_after_shopping_does_not_readd_bought_lines(tmp_path):
-    write_plan(tmp_path, "2026-W48", ["Melk", "Kaas"])
-    keep = FakeKeepList()
-    run.sync(tmp_path, keep, TODAY, NOW)
-    keep._items = [Item(i.id, i.text, i.text == "Melk") for i in keep._items]  # melk gekocht
-    write_plan(tmp_path, "2026-W48", ["Melk", "Kaas", "Ui 2"])
-    run.sync(tmp_path, keep, TODAY, NOW)
-    assert sorted(i.text for i in keep.items() if not i.checked) == ["Kaas", "Ui 2"]
-
-
-def test_same_line_in_two_weeks_gives_two_lines(tmp_path):
-    write_plan(tmp_path, "2026-W48", ["Ui 2"])
-    write_plan(tmp_path, "2026-W49", ["Ui 2"])
-    keep = FakeKeepList()
-    run.sync(tmp_path, keep, TODAY, NOW)
-    assert keep.texts() == ["Ui 2", "Ui 2"]
+    assert status["ok"] is False and "login mislukt" in status["melding"] and "aas_geheim123" not in status["melding"]

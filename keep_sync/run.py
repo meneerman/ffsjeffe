@@ -1,4 +1,4 @@
-"""Zet de boodschappen van vastgezette weekplannen op de Keep-lijst. Draait in GitHub Actions.
+"""Zet de boodschappen van het vastgezette menu op de Keep-lijst. Draait in GitHub Actions.
 
 Gebruik: python -m keep_sync.run <data_dir>   (env: KEEP_EMAIL, KEEP_MASTER_TOKEN, KEEP_DEVICE_ID, optioneel KEEP_LIST_TITLE)
 """
@@ -6,12 +6,12 @@ Gebruik: python -m keep_sync.run <data_dir>   (env: KEEP_EMAIL, KEEP_MASTER_TOKE
 import json
 import os
 import sys
-from datetime import date, datetime, timedelta
+from datetime import datetime
 from pathlib import Path
 from typing import Protocol
 from zoneinfo import ZoneInfo
 
-from keep_sync.diff import Item, Wens, next_state, plan_changes
+from keep_sync.diff import Item, Wens, clear_ids, next_state, plan_changes
 
 TZ = ZoneInfo("Europe/Amsterdam")
 
@@ -25,29 +25,18 @@ class KeepList(Protocol):
     def save(self) -> None: ...
 
 
-def isoweek(d: date) -> str:
-    year, week, _ = d.isocalendar()
-    return f"{year}-W{week:02d}"
+def desired_lines(menu: dict | None) -> list[Wens]:
+    if not menu:
+        return []
+    ronde = menu.get("ronde", "")
+    return list(dict.fromkeys((ronde, tekst) for tekst in menu.get("boodschappen", [])))
 
 
-def teplannen_week(today: date) -> str:
-    """Zelfde regel als de app: zaterdag en zondag horen bij de volgende week."""
-    return isoweek(today + timedelta(days=2) if today.weekday() >= 5 else today)
-
-
-def desired_lines(plans_dir: Path, today: date) -> tuple[list[Wens], list[str]]:
-    current = teplannen_week(today)
-    lines: list[Wens] = []
-    weeks: list[str] = []
-    if not plans_dir.is_dir():
-        return [], []
-    for path in sorted(plans_dir.glob("*.json")):
-        plan = json.loads(path.read_text(encoding="utf-8"))
-        if plan.get("status") != "vastgezet" or plan.get("week", "") < current:
-            continue
-        weeks.append(plan["week"])
-        lines.extend((plan["week"], tekst) for tekst in plan.get("boodschappen", []))
-    return list(dict.fromkeys(lines)), weeks
+def _read(path: Path) -> dict | None:
+    try:
+        return json.loads(path.read_text(encoding="utf-8")) if path.exists() else None
+    except json.JSONDecodeError:
+        return None
 
 
 def _write(data_dir: Path, name: str, content: dict) -> None:
@@ -56,24 +45,36 @@ def _write(data_dir: Path, name: str, content: dict) -> None:
     path.write_text(json.dumps(content, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
 
 
-def sync(data_dir: Path, keep: KeepList, today: date, now: datetime) -> dict:
-    state_path = data_dir / "weekmenu" / "keep-state.json"
-    state = json.loads(state_path.read_text(encoding="utf-8")) if state_path.exists() else {}
-    own: dict[str, dict] = state.get("regels", {}) if state.get("lijst_id") == keep.id else {}
-    own = {i: r for i, r in own.items() if isinstance(r, dict)}  # oud formaat telt niet
+def sync(data_dir: Path, keep: KeepList, now: datetime) -> dict:
+    state = _read(data_dir / "weekmenu" / "keep-state.json") or {}
+    menu = _read(data_dir / "weekmenu" / "menu.json")
+    if menu is not None and menu.get("versie") != 2:
+        menu = None
+    same_list = state.get("lijst_id") == keep.id
+    own: dict[str, dict] = state.get("regels", {}) if same_list else {}
+    own = {i: r for i, r in own.items() if isinstance(r, dict) and "ronde" in r}  # oud formaat telt niet
+    leeggemaakt = state.get("leeggemaakt") if same_list else None
 
-    lines, weeks = desired_lines(data_dir / "weekmenu" / "plannen", today)
     items = keep.items()
-    changes = plan_changes(lines, own, items)
+    leegmaken_op = (menu or {}).get("leegmakenOp")
+    if leegmaken_op and (leeggemaakt is None or leegmaken_op > leeggemaakt):
+        weg = clear_ids(own, items)
+        for item_id in weg:
+            keep.delete(item_id)
+        print(f"leeggemaakt: {len(weg)} regels")
+        own, leeggemaakt = {}, leegmaken_op
+        items = [i for i in items if i.id not in set(weg)]
+
+    changes = plan_changes(desired_lines(menu), own, items)
     for item_id in changes.delete_ids:
         keep.delete(item_id)
-    added = {keep.add(tekst): (week, tekst) for week, tekst in changes.add}
+    added = {keep.add(tekst): (ronde, tekst) for ronde, tekst in changes.add}
     keep.save()
     if added:
         print(f"toegevoegd: {json.dumps(added, ensure_ascii=False)}")  # vangnet als de state-commit faalt
 
-    _write(data_dir, "keep-state.json", {"lijst_id": keep.id, "regels": next_state(own, changes, added)})
-    status = {"tijd": now.isoformat(), "ok": True, "melding": "", "weken": weeks}
+    _write(data_dir, "keep-state.json", {"lijst_id": keep.id, "leeggemaakt": leeggemaakt, "regels": next_state(own, changes, added)})
+    status = {"tijd": now.isoformat(), "ok": True, "melding": "", "weken": []}
     _write(data_dir, "keep-status.json", status)
     return status
 
@@ -120,8 +121,8 @@ def main() -> int:
             os.environ.get("KEEP_DEVICE_ID") or None,
             os.environ.get("KEEP_LIST_TITLE", "boodschappenlijst"),
         )
-        status = sync(data_dir, keep, now.date(), now)
-        print(f"Keep bijgewerkt voor {', '.join(status['weken']) or 'geen weken'}")
+        sync(data_dir, keep, now)
+        print("Keep bijgewerkt")
         return 0
     except Exception as e:  # elke fout zichtbaar maken, zonder geheimen
         melding = f"{type(e).__name__}: {e}"

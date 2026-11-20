@@ -1,9 +1,9 @@
-import { readFileSync } from 'node:fs'
+import { leesVoorbeeld } from '../testhulp'
 import { expect, test } from 'vitest'
 import { parseRecept, parseVerpakkingen } from './recepten'
 import type { Recept } from './types'
 
-const VOORBEELD = readFileSync(new URL('../../../data-template/recepten/pasta-zalm.md', import.meta.url), 'utf8')
+const VOORBEELD = leesVoorbeeld('pasta-zalm.md')
 const fout = (x: unknown) => typeof x === 'object' && x !== null && 'fout' in x
 
 test('parseert een geldig recept met standaardwaarden', () => {

@@ -1,0 +1,35 @@
+:root {
+  --bg: #f6f4ef; --kaart: #ffffff; --tekst: #1d1b18; --zacht: #6b665e; --lijn: #e3dfd6;
+  --accent: #2f6b4f; --accent-tekst: #ffffff; --fout: #b3261e; --waarschuwing: #8a5a00;
+  color-scheme: light;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #151412; --kaart: #201e1b; --tekst: #f1eee8; --zacht: #a39e95; --lijn: #34312c;
+    --accent: #7cc4a0; --accent-tekst: #10201a; --fout: #f2b8b5; --waarschuwing: #f0c36b;
+    color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #151412; --kaart: #201e1b; --tekst: #f1eee8; --zacht: #a39e95; --lijn: #34312c;
+  --accent: #7cc4a0; --accent-tekst: #10201a; --fout: #f2b8b5; --waarschuwing: #f0c36b;
+  color-scheme: dark;
+}
+* { box-sizing: border-box; }
+html, body { margin: 0; }
+body { background: var(--bg); color: var(--tekst); font: 16px/1.45 system-ui, -apple-system, "Segoe UI", sans-serif; }
+main { max-width: 560px; margin: 0 auto; padding: 16px 16px 48px; }
+h1 { font-size: 1.4rem; margin: 0 0 12px; }
+h2 { font-size: 1.1rem; margin: 20px 0 8px; }
+a { color: var(--accent); }
+.zacht { color: var(--zacht); }
+.kaart { background: var(--kaart); border: 1px solid var(--lijn); border-radius: 12px; padding: 14px; margin: 8px 0; }
+.instellingen label { display: block; margin: 12px 0; font-weight: 600; }
+input { display: block; width: 100%; margin-top: 4px; padding: 10px 12px; font: inherit; color: inherit; background: var(--bg); border: 1px solid var(--lijn); border-radius: 8px; }
+button { font: inherit; padding: 8px 14px; border-radius: 8px; border: 1px solid var(--lijn); background: var(--kaart); color: var(--tekst); cursor: pointer; }
+button.primair { background: var(--accent); color: var(--accent-tekst); border-color: var(--accent); font-weight: 600; }
+button:disabled { opacity: .5; cursor: default; }
+.melding { margin: 8px 0; }
+.melding.fout { color: var(--fout); }
+.melding.waarschuwing { color: var(--waarschuwing); padding-left: 18px; }
+footer { margin-top: 32px; text-align: center; font-size: .9rem; }

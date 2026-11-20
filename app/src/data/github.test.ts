@@ -1,10 +1,10 @@
-import { readFileSync } from 'node:fs'
+import { leesVoorbeeld } from '../testhulp'
 import { expect, test } from 'vitest'
 import type { WeekPlan } from '../core/types'
 import { DataRepo, TokenFout, VerouderdFout, naarBase64, vanBase64 } from './github'
 
 const BASE = 'https://api.github.com/repos/meneerman/ffsjeffe-data/'
-const lees = (f: string) => readFileSync(new URL(`../../../data-template/recepten/${f}`, import.meta.url), 'utf8')
+const lees = leesVoorbeeld
 
 type Antwoord = { status: number; body?: unknown }
 function nepFetch(routes: Record<string, Antwoord>) {

@@ -18,7 +18,7 @@ export type DataStaat =
   | { status: 'klaar'; data: AppData }
   | { status: 'fout'; fout: Error }
 
-export function useData(repo: Repo | null): DataStaat & { herlaad: () => void } {
+export function useData(repo: Repo | null): DataStaat & { herlaad: () => void; bijgewerkt: (menu: { menu: Menu; sha: string }) => void } {
   const [staat, setStaat] = useState<DataStaat>({ status: 'laden' })
   const [teller, setTeller] = useState(0)
   const herlaad = useCallback(() => setTeller((n) => n + 1), [])

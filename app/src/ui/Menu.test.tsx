@@ -237,3 +237,13 @@ test('pull-to-refresh: omlaag trekken bovenaan herlaadt', async () => {
   fireEvent.touchEnd(vlak)
   expect(herlaad).toHaveBeenCalledTimes(1)
 })
+
+test('twee keer snel verwijderen haalt beide weg', async () => {
+  await toon(new NepRepo(), extra(3))
+  const [a, b, c] = titels()
+  await verwijderBevestigd(a)
+  await verwijderBevestigd(b)
+  await waitFor(() => expect(titels()).toEqual([c]))
+  await new Promise((r) => setTimeout(r, 500))
+  expect(titels()).toEqual([c])
+})

@@ -102,3 +102,10 @@ test('401 en 403 worden TokenFout', async () => {
 
 test('andere fout geeft een leesbare melding', async () =>
   await expect(repo({ 'GET git/trees/main?recursive=1': { status: 500 } }).repo.recepten()).rejects.toThrow('GitHub gaf status 500'))
+
+test('nooit uit de browsercache lezen (GitHub stuurt max-age=60)', async () => {
+  const { repo: r, verzoeken } = repo({})
+  await r.keepStatus()
+  await r.instellingen()
+  expect(verzoeken.map((v) => v.init?.cache)).toEqual(['no-store', 'no-store'])
+})

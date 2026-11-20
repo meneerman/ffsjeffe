@@ -1,11 +1,19 @@
 """Pure logica: welke regels moet ffsjeffe op de Keep-lijst toevoegen of weghalen.
 
-De app raakt alleen regels aan die hij zelf heeft toegevoegd (`own`: id -> tekst zoals toegevoegd).
-Een eigen regel telt alleen als "aanwezig" zolang hij bestaat, niet is afgevinkt en zijn tekst
-ongewijzigd is. Afgevinkte of door iemand bewerkte eigen regels worden losgelaten: nooit verwijderd.
+Een *wens* is (week, tekst): één boodschappenregel uit het vastgezette plan van die week.
+`own` = de regels die de app zelf heeft toegevoegd: keep-item-id -> {"week", "tekst"}.
+
+Regels:
+- Een wens die al een eigen regel heeft, is afgehandeld, ook als die regel inmiddels is afgevinkt,
+  bewerkt of weggehaald. Zo komt wat al gekocht is niet terug op de lijst.
+- Een eigen regel die niet meer gewenst is, wordt alleen verwijderd als hij nog open staat en
+  onbewerkt is. Afgevinkte en bewerkte regels blijven altijd staan.
+- Regels die de app niet zelf heeft toegevoegd, worden nooit aangeraakt.
 """
 
 from dataclasses import dataclass
+
+Wens = tuple[str, str]  # (week, tekst)
 
 
 @dataclass(frozen=True)
@@ -17,34 +25,38 @@ class Item:
 
 @dataclass(frozen=True)
 class Changes:
-    add: list[str]
+    add: list[Wens]
     delete_ids: list[str]
     keep_ids: list[str]
 
 
-def _live_own(own: dict[str, str], items: list[Item]) -> dict[str, str]:
-    """Eigen regels die nog bestaan, open zijn en niet bewerkt: id -> tekst."""
-    return {i.id: i.text for i in items if i.id in own and not i.checked and i.text == own[i.id]}
+def _wens(regel: dict) -> Wens:
+    return (regel.get("week", ""), regel.get("tekst", ""))
 
 
-def plan_changes(desired: list[str], own: dict[str, str], items: list[Item]) -> Changes:
+def plan_changes(desired: list[Wens], own: dict[str, dict], items: list[Item]) -> Changes:
     wanted = list(dict.fromkeys(desired))
-    live = _live_own(own, items)
+    wanted_set = set(wanted)
+    by_id = {i.id: i for i in items}
+
     keep_ids: list[str] = []
-    present: set[str] = set()
     delete_ids: list[str] = []
-    for item_id, text in live.items():
-        if text in wanted and text not in present:
+    afgehandeld: set[Wens] = set()
+    for item_id, regel in own.items():
+        w = _wens(regel)
+        item = by_id.get(item_id)
+        open_en_onbewerkt = item is not None and not item.checked and item.text == w[1]
+        if w in wanted_set and w not in afgehandeld:
             keep_ids.append(item_id)
-            present.add(text)
-        else:
+            afgehandeld.add(w)
+        elif open_en_onbewerkt:
             delete_ids.append(item_id)
-    add = [t for t in wanted if t not in present]
+
+    add = [w for w in wanted if w not in afgehandeld]
     return Changes(add=add, delete_ids=delete_ids, keep_ids=keep_ids)
 
 
-def next_state(own: dict[str, str], changes: Changes, added: dict[str, str], items: list[Item]) -> dict[str, str]:
-    live = _live_own(own, items)
-    state = {i: live[i] for i in changes.keep_ids if i in live}
-    state.update(added)
+def next_state(own: dict[str, dict], changes: Changes, added: dict[str, Wens]) -> dict[str, dict]:
+    state = {i: dict(own[i]) for i in changes.keep_ids}
+    state.update({i: {"week": w, "tekst": t} for i, (w, t) in added.items()})
     return state

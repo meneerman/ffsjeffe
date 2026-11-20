@@ -12,7 +12,11 @@ jobs:
   sync:
     runs-on: ubuntu-latest
     steps:
+      # altijd de nieuwste stand van main (niet de push die deze run startte): een run die
+      # in de wachtrij stond moet de administratie van de vorige run zien
       - uses: actions/checkout@v4
+        with:
+          ref: main
       - uses: actions/checkout@v4
         with:
           repository: meneerman/ffsjeffe

@@ -36,6 +36,7 @@ export class DataRepo {
   private async vraag(pad: string, init: RequestInit = {}, toegestaan: number[] = []): Promise<Response> {
     const res = await this.f(`https://api.github.com/repos/${this.v.owner}/${this.v.repo}/${pad}`, {
       ...init,
+      cache: 'no-store',
       headers: {
         Authorization: `Bearer ${this.v.token}`,
         Accept: 'application/vnd.github+json',

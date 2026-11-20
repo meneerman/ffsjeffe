@@ -6,8 +6,21 @@ export function toonHoeveelheid(h: number): string {
   return (Math.round(h * 10) / 10).toLocaleString('nl-NL', { maximumFractionDigits: 1 })
 }
 
+const MAAT = new Set(['g', 'kg', 'ml', 'l', 'dl', 'cl'])
+const LEPEL = new Set(['el', 'tl'])
+
+/** Kookvriendelijk: maten ≥ 10 heel, stuks/tenen/bosjes op halven (min ½), lepels op kwarten (min ¼). */
+function rond(h: number, eenheid: string | null): number {
+  const e = eenheid ?? 'stuk'
+  if (MAAT.has(e)) return h >= 10 ? Math.round(h) : h
+  if (LEPEL.has(e)) return Math.max(0.25, Math.round(h * 4) / 4)
+  return Math.max(0.5, Math.round(h * 2) / 2)
+}
+
 function metEenheid(h: number, eenheid: string | null): string {
-  return eenheid && eenheid !== 'stuk' ? `${toonHoeveelheid(h)} ${eenheid}` : toonHoeveelheid(h)
+  const g = rond(h, eenheid)
+  const r = LEPEL.has(eenheid ?? '') ? g.toLocaleString('nl-NL', { maximumFractionDigits: 2 }) : toonHoeveelheid(g)
+  return eenheid && eenheid !== 'stuk' ? `${r} ${eenheid}` : r
 }
 
 export function toonIngredient(i: Ingredient, factor: number): string {

@@ -31,3 +31,12 @@ test('schaalStap', () => {
   expect(schaalStap('zonder markering', 3)).toBe('zonder markering')
   expect(schaalStap('{2 stuk} uien', 1)).toBe('2 uien')
 })
+
+test('kookvriendelijk afronden per soort eenheid', () => {
+  expect(toonIngredient(ing('knoflook', 1, 'teen'), 0.75)).toBe('1 teen knoflook')
+  expect(toonIngredient(ing('zalmfilet', 2, 'stuk'), 0.75)).toBe('1,5 zalmfilet')
+  expect(toonIngredient(ing('ui', 1, 'stuk'), 0.2)).toBe('0,5 ui')
+  expect(toonIngredient(ing('olijfolie', 15, 'ml'), 0.75)).toBe('11 ml olijfolie')
+  expect(toonIngredient(ing('zout', 3, 'g'), 0.75)).toBe('2,3 g zout')
+  expect(schaalStap('Pers {1 teen} knoflook.', 0.75)).toBe('Pers 1 teen knoflook.')
+})

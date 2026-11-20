@@ -25,6 +25,18 @@ export function weekKop(week: string): string {
 }
 
 const conceptSleutel = (week: string) => `ffsjeffe.concept.${week}`
+type Concept = { slots: Slot[]; sinds: string }
+
+/** Een lokaal concept, tenzij iemand de week daarna (opnieuw) heeft vastgezet. */
+function geldigConcept(week: string, vastgezet: WeekPlan | null): Concept | null {
+  const c = lees<Concept>(conceptSleutel(week))
+  if (!c || !Array.isArray(c.slots)) return null
+  if (vastgezet && Date.parse(vastgezet.vastgezetOp) >= Date.parse(c.sinds)) {
+    schrijf(conceptSleutel(week), null)
+    return null
+  }
+  return c
+}
 
 type Props = SchermProps & { vandaag?: Date; Extra?: (p: { slots: Slot[]; perId: Record<string, Recept>; vastgezet: WeekPlan | null }) => JSX.Element }
 
@@ -61,19 +73,16 @@ function WeekInhoud({ data, repo, naam, herlaad, week, vastgezet, bijVastzetten,
   const perId = useMemo(() => Object.fromEntries(recepten.map((r) => [r.id, r])), [recepten])
   const voorstel = () => stelVoor(recepten, week, plannen, verpakkingen, instellingen.huishouden)
 
-  const [slots, zetSlots] = useState<Slot[]>(() => {
-    const concept = lees<Slot[]>(conceptSleutel(week))
-    const bron = concept ?? vastgezet?.plan.slots ?? voorstel()
-    return bron.filter((s) => perId[s.receptId])
-  })
-  const [heeftConcept, setHeeftConcept] = useState(() => lees(conceptSleutel(week)) !== null)
+  const [beginConcept] = useState(() => geldigConcept(week, vastgezet?.plan ?? null))
+  const [slots, zetSlots] = useState<Slot[]>(() => (beginConcept?.slots ?? vastgezet?.plan.slots ?? voorstel()).filter((s) => perId[s.receptId]))
+  const [heeftConcept, setHeeftConcept] = useState(beginConcept !== null)
   const [ruilIndex, setRuilIndex] = useState<number | null>(null)
   const [bezig, setBezig] = useState(false)
   const [fout, setFout] = useState<Error | null>(null)
 
   const wijzig = (nieuw: Slot[]) => {
     zetSlots(nieuw)
-    schrijf(conceptSleutel(week), nieuw)
+    schrijf(conceptSleutel(week), { slots: nieuw, sinds: new Date().toISOString() } satisfies Concept)
     setHeeftConcept(true)
     setFout(null)
   }

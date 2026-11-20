@@ -58,7 +58,7 @@ test('ruilen vervangt het gerecht en bewaart het concept', async () => {
   expect(titels()[0]).toBe(keuze)
   expect(screen.queryByRole('dialog')).toBeNull()
   const concept = JSON.parse(localStorage.getItem('ffsjeffe.concept.2026-W48')!)
-  expect(concept).toHaveLength(5)
+  expect(concept.slots).toHaveLength(5)
 })
 
 test('ruilen: volgende en sluiten', async () => {
@@ -138,4 +138,23 @@ test('opnieuw voorstellen wist het concept', async () => {
   await userEvent.click(screen.getByRole('button', { name: 'Opnieuw voorstellen' }))
   expect(titels()).toEqual(voor)
   expect(localStorage.getItem('ffsjeffe.concept.2026-W48')).toBeNull()
+})
+
+test('een concept ouder dan een nieuwere vastzetting van de partner wordt genegeerd', async () => {
+  localStorage.setItem('ffsjeffe.concept.2026-W48', JSON.stringify({ slots: [{ receptId: 'pasta-zalm', dagen: 1 }], sinds: '2026-11-21T08:00:00.000Z' }))
+  const repo = new NepRepo()
+  const plan: WeekPlan = { week: '2026-W48', status: 'vastgezet', slots: [{ receptId: 'wraps-kip', dagen: 1 }], boodschappen: [], vastgezetOp: '2026-11-21T09:00:00.000Z', door: 'Partner' }
+  repo.plannen_ = [{ plan, sha: 'abc' }]
+  await toon(repo)
+  expect(titels()).toEqual(['Wraps met kip en crème fraîche'])
+  expect(localStorage.getItem('ffsjeffe.concept.2026-W48')).toBeNull()
+})
+
+test('een concept nieuwer dan de vastzetting blijft staan', async () => {
+  localStorage.setItem('ffsjeffe.concept.2026-W48', JSON.stringify({ slots: [{ receptId: 'pasta-zalm', dagen: 1 }], sinds: '2026-11-21T10:00:00.000Z' }))
+  const repo = new NepRepo()
+  const plan: WeekPlan = { week: '2026-W48', status: 'vastgezet', slots: [{ receptId: 'wraps-kip', dagen: 1 }], boodschappen: [], vastgezetOp: '2026-11-21T09:00:00.000Z', door: 'Partner' }
+  repo.plannen_ = [{ plan, sha: 'abc' }]
+  await toon(repo)
+  expect(titels()).toEqual(['Pasta met zalm en crème fraîche'])
 })

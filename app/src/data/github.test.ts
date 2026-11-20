@@ -98,7 +98,7 @@ test('401 en 403 worden TokenFout', async () => {
 })
 
 test('instellingen en keepStatus', async () => {
-  expect(await repo({}).repo.instellingen()).toEqual({ huishouden: 2 })
+  expect(await repo({}).repo.instellingen()).toEqual({ huishouden: 4 })
   expect(await repo({}).repo.keepStatus()).toBeNull()
 })
 

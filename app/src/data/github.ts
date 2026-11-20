@@ -100,7 +100,7 @@ export class DataRepo {
 
   async instellingen(): Promise<Instellingen> {
     const b = await this.bestand('weekmenu/instellingen.json')
-    return { huishouden: 2, ...(b ? (JSON.parse(b.inhoud) as Partial<Instellingen>) : {}) }
+    return { huishouden: 4, ...(b ? (JSON.parse(b.inhoud) as Partial<Instellingen>) : {}) }
   }
 
   async keepStatus(): Promise<KeepStatus | null> {

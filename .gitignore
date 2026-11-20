@@ -6,5 +6,5 @@ node_modules/
 __pycache__/
 .superpowers/
 .certs/
-data/
-docs
+/data/
+/docs

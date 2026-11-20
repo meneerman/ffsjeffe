@@ -38,5 +38,10 @@ export function useData(repo: Repo | null): DataStaat & { herlaad: () => void } 
     }
   }, [repo, teller])
 
-  return { ...staat, herlaad }
+  /** Een net geschreven menu meteen overal zichtbaar maken (zonder op een verversing te wachten). */
+  const bijgewerkt = useCallback((menu: { menu: Menu; sha: string }) => {
+    setStaat((s) => (s.status === 'klaar' ? { ...s, data: { ...s.data, menu } } : s))
+  }, [])
+
+  return { ...staat, herlaad, bijgewerkt }
 }

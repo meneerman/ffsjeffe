@@ -1,5 +1,6 @@
 import { cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
+import { useState } from 'react'
 import { afterEach, beforeEach, expect, test, vi } from 'vitest'
 import { behoeften, boodschappenRegels } from '../core/boodschappen'
 import { gerecht, ing, recept } from '../core/testdata'
@@ -28,7 +29,11 @@ async function toon(repo: NepRepo, recepten: Recept[] = [], herlaad = vi.fn()) {
   repo.recepten_ = [...repo.recepten_, ...recepten]
   const r = await repo.recepten()
   const data: AppData = { ...r, menu: repo.menu_, instellingen: { huishouden: 2 }, keepStatus: null }
-  render(<Menu data={data} repo={repo} naam="Menno" herlaad={herlaad} hash="#/" nu={() => NU} />)
+  function Houder() {
+    const [d, setD] = useState(data)
+    return <Menu data={d} repo={repo} naam="Menno" herlaad={herlaad} bijgewerkt={(menu) => setD((x) => ({ ...x, menu }))} hash="#/" nu={() => NU} />
+  }
+  render(<Houder />)
   return { data, herlaad }
 }
 async function verwijderBevestigd(titel: string) {

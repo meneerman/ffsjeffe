@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from 'react'
+import type { Menu as MenuT } from '../core/types'
 import { DataRepo, TokenFout, type Verbinding } from '../data/github'
 import { Instellingen } from './Instellingen'
 import { bewaarVerbinding, leesVerbinding, type Opgeslagen } from './opslag'
@@ -18,7 +19,7 @@ export function useHash(): string {
   return hash
 }
 
-export type SchermProps = { data: AppData; repo: Repo; naam: string; herlaad: () => void; hash: string }
+export type SchermProps = { data: AppData; repo: Repo; naam: string; herlaad: () => void; bijgewerkt: (m: { menu: MenuT; sha: string }) => void; hash: string }
 
 function Inhoud(p: SchermProps) {
   if (p.hash.startsWith('#/recept/')) {
@@ -79,7 +80,7 @@ export default function App({ maakRepo = (v: Verbinding) => new DataRepo(v), Sch
               ))}
             </ul>
           )}
-          <Scherm data={data.data} repo={repo!} naam={verbinding.naam} herlaad={data.herlaad} hash={hash} />
+          <Scherm data={data.data} repo={repo!} naam={verbinding.naam} herlaad={data.herlaad} bijgewerkt={data.bijgewerkt} hash={hash} />
         </div>
       )}
       <footer>

@@ -23,14 +23,8 @@ export function receptMeta(r: Recept, laatstGegeten: Record<string, string>, nu:
   return [r.tijdMinuten > 0 && `${r.tijdMinuten} min`, r.avonden > 1 && `${r.avonden} avonden`, geledenTekst(laatstGegeten[r.id], nu)].filter(Boolean).join(' · ')
 }
 
-export function Menu({ data, repo, naam, herlaad, nu = () => new Date() }: SchermProps & { nu?: () => Date }) {
-  const [menuNu, setMenuNu] = useState(data.menu)
-  useEffect(() => {
-    // een verversing met een even nieuw of nieuwer menu overnemen
-    if (data.menu && (!menuNu || data.menu.menu.vastgezetOp >= menuNu.menu.vastgezetOp)) setMenuNu(data.menu)
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [data.menu])
-
+export function Menu({ data, repo, naam, herlaad, bijgewerkt, nu = () => new Date() }: SchermProps & { nu?: () => Date }) {
+  const menuNu = data.menu
   const menu: MenuT | null = menuNu?.menu ?? null
   const concept = useConcept(data, menu)
   const { gerechten } = concept
@@ -53,7 +47,7 @@ export function Menu({ data, repo, naam, herlaad, nu = () => new Date() }: Scher
     setFout(null)
     try {
       const sha = await repo.zetMenu(m, menuNu?.sha ?? null, bericht)
-      setMenuNu({ menu: m, sha })
+      bijgewerkt({ menu: m, sha })
       return true
     } catch (e) {
       setFout(e as Error)
@@ -88,7 +82,7 @@ export function Menu({ data, repo, naam, herlaad, nu = () => new Date() }: Scher
       const huidig = nieuwst.menu.gerechten.find((g) => g.receptId === r.id)
       const m = markeerGegeten(nieuwst.menu, r.id, !huidig?.gegetenOp, nu())
       const sha = await repo.zetMenu(m, nieuwst.sha, `${r.titel} gegeten — ${naam}`)
-      setMenuNu({ menu: m, sha })
+      bijgewerkt({ menu: m, sha })
     } catch (e) {
       setFout(e as Error)
     } finally {

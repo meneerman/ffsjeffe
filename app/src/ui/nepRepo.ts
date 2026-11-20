@@ -1,7 +1,7 @@
 // Testhulp: een DataRepo in het geheugen.
 import { parseRecept, parseVerpakkingen } from '../core/recepten'
 import type { Menu, Recept } from '../core/types'
-import type { KeepStatus } from '../data/github'
+import { VerouderdFout, type KeepStatus } from '../data/github'
 import { leesVoorbeeld } from '../testhulp'
 
 export const PASTA = 'Pasta met zalm en crème fraîche'
@@ -30,6 +30,7 @@ export class NepRepo {
   async keepStatus() { return this.status_ }
   async zetMenu(menu: Menu, sha: string | null, bericht: string) {
     if (this.zetFout) throw this.zetFout
+    if ((this.menu_?.sha ?? null) !== sha) throw new VerouderdFout() // zoals GitHub bij een verouderde sha
     this.geschreven.push({ menu, sha, bericht })
     const nieuw = `sha${this.geschreven.length}`
     this.menu_ = { menu, sha: nieuw }

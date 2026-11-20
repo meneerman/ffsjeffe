@@ -81,15 +81,21 @@ export class DataRepo {
     return { recepten, fouten, verpakkingen: verpakkingsBestand ? parseVerpakkingen(verpakkingsBestand.inhoud) : {} }
   }
 
+  /** sha van een bestaande maar onbruikbare menu.json, zodat vastzetten hem kan overschrijven. */
+  private onbruikbaarSha: string | null = null
+
   async menu(): Promise<{ menu: Menu; sha: string } | null> {
     const b = await this.bestand(MENU)
+    this.onbruikbaarSha = null
     if (!b) return null
     try {
       const menu = JSON.parse(b.inhoud) as Menu
-      return menu && menu.versie === 2 && Array.isArray(menu.gerechten) ? { menu, sha: b.sha } : null
+      if (menu && menu.versie === 2 && Array.isArray(menu.gerechten)) return { menu, sha: b.sha }
     } catch {
-      return null
+      /* onbruikbaar */
     }
+    this.onbruikbaarSha = b.sha
+    return null
   }
 
   async instellingen(): Promise<Instellingen> {
@@ -108,7 +114,8 @@ export class DataRepo {
       content: naarBase64(JSON.stringify(menu, null, 2) + '\n'),
       branch: 'main',
     }
-    if (sha) body.sha = sha
+    const echteSha = sha ?? this.onbruikbaarSha
+    if (echteSha) body.sha = echteSha
     const res = await this.vraag(`contents/${MENU}`, { method: 'PUT', body: JSON.stringify(body) }, [409, 422])
     if (res.status === 409) throw new VerouderdFout()
     if (res.status === 422) {

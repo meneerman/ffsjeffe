@@ -101,3 +101,13 @@ test('instellingen en keepStatus', async () => {
   expect(await repo({}).repo.instellingen()).toEqual({ huishouden: 2 })
   expect(await repo({}).repo.keepStatus()).toBeNull()
 })
+
+test('vastzetten over een kapotte menu.json gebruikt de sha van dat bestand', async () => {
+  const { repo: r, verzoeken } = repo({
+    [`GET ${MENUPAD}?ref=main`]: bestand('{kapot', 'kapot-sha'),
+    [`PUT ${MENUPAD}`]: { status: 200, body: { content: { sha: 'nieuw' } } },
+  })
+  expect(await r.menu()).toBeNull()
+  await r.zetMenu(MENU, null, 'x')
+  expect(JSON.parse(verzoeken.at(-1)!.init!.body as string).sha).toBe('kapot-sha')
+})

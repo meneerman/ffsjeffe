@@ -1,27 +1,23 @@
 import { aantalVerpakkingen, behoeften, schaalfactor } from './boodschappen'
 import { normaliseer } from './eenheden'
+import { datumNL } from './menu'
 import { sleutel } from './recepten'
-import type { Recept, Slot, Verpakkingen, WeekPlan } from './types'
-import { weekVerschil } from './week'
+import type { Gerecht, Recept, Verpakkingen } from './types'
 
-export const MAX_DAGEN = 5
-const NOOIT_GEGETEN = 12
+const NOOIT = 84 // dagen
 const GEWICHT_WILLEKEUR = 2
 const GEWICHT_RESTJES = 6
+const DAG_MS = 86_400_000
 
-const som = (slots: Slot[]) => slots.reduce((n, s) => n + s.dagen, 0)
-
-/** receptId -> laatste week waarin het in een vastgezet plan stond. */
-export function geschiedenis(plannen: WeekPlan[]): Record<string, string> {
-  const uit: Record<string, string> = {}
-  for (const p of plannen) for (const s of p.slots) if (!uit[s.receptId] || p.week > uit[s.receptId]) uit[s.receptId] = p.week
-  return uit
+/** Kalenderdagen tussen een datum (YYYY-MM-DD) en vandaag in Amsterdam. */
+export function dagenGeleden(datum: string, vandaag: Date): number {
+  return Math.round((Date.parse(datumNL(vandaag)) - Date.parse(datum)) / DAG_MS)
 }
 
 /** Per verpakt ingrediënt wat er na afronden op hele verpakkingen overblijft (basiseenheid). */
-export function restjes(slots: Slot[], recepten: Record<string, Recept>, verpakkingen: Verpakkingen, huishouden: number): Record<string, number> {
+export function restjes(gerechten: Gerecht[], recepten: Record<string, Recept>, verpakkingen: Verpakkingen): Record<string, number> {
   const uit: Record<string, number> = {}
-  for (const b of behoeften(slots, recepten, huishouden)) {
+  for (const b of behoeften(gerechten, recepten)) {
     const n = aantalVerpakkingen(b, verpakkingen)
     if (n === null) continue
     const v = verpakkingen[sleutel(b.naam)]
@@ -31,9 +27,8 @@ export function restjes(slots: Slot[], recepten: Record<string, Recept>, verpakk
   return uit
 }
 
-/** Hoeveel verpakkingen-aan-restjes dit recept opmaakt. */
-function restdekking(r: Recept, rest: Record<string, number>, verpakkingen: Verpakkingen, huishouden: number): number {
-  const factor = schaalfactor(r, r.dagen, huishouden)
+function restdekking(r: Recept, rest: Record<string, number>, verpakkingen: Verpakkingen, eters: number): number {
+  const factor = schaalfactor(r, eters)
   let dekking = 0
   for (const i of r.ingredienten) {
     const k = sleutel(i.naam)
@@ -47,11 +42,11 @@ function restdekking(r: Recept, rest: Record<string, number>, verpakkingen: Verp
 }
 
 export function score(
-  r: Recept, week: string, gesch: Record<string, string>, rest: Record<string, number>,
-  verpakkingen: Verpakkingen, huishouden: number, rnd: number,
+  r: Recept, laatstGegeten: Record<string, string>, vandaag: Date, rest: Record<string, number>,
+  verpakkingen: Verpakkingen, eters: number, rnd: number,
 ): number {
-  const weken = gesch[r.id] ? Math.min(weekVerschil(gesch[r.id], week), NOOIT_GEGETEN) : NOOIT_GEGETEN
-  return weken + GEWICHT_WILLEKEUR * rnd + GEWICHT_RESTJES * restdekking(r, rest, verpakkingen, huishouden)
+  const dagen = laatstGegeten[r.id] ? Math.min(Math.max(dagenGeleden(laatstGegeten[r.id], vandaag), 0), NOOIT) : NOOIT
+  return dagen / 7 + GEWICHT_WILLEKEUR * rnd + GEWICHT_RESTJES * restdekking(r, rest, verpakkingen, eters)
 }
 
 function mulberry32(seed: number): () => number {
@@ -71,57 +66,34 @@ function hash(s: string): number {
   return h >>> 0
 }
 
-/** Vaste willekeur per (week, recept): zelfde week = zelfde voorstel. */
-function willekeur(recepten: Recept[], week: string): Record<string, number> {
-  const rnd = mulberry32(hash(week))
+function willekeur(recepten: Recept[], seed: string): Record<string, number> {
+  const rnd = mulberry32(hash(seed))
   const uit: Record<string, number> = {}
   for (const r of [...recepten].sort((a, b) => a.id.localeCompare(b.id))) uit[r.id] = rnd()
   return uit
 }
 
-type Context = { week: string; gesch: Record<string, string>; rnd: Record<string, number>; perId: Record<string, Recept>; verpakkingen: Verpakkingen; huishouden: number }
-
-function context(recepten: Recept[], week: string, plannen: WeekPlan[], verpakkingen: Verpakkingen, huishouden: number): Context {
-  return {
-    week,
-    gesch: geschiedenis(plannen.filter((p) => p.week < week)),
-    rnd: willekeur(recepten, week),
-    perId: Object.fromEntries(recepten.map((r) => [r.id, r])),
-    verpakkingen,
-    huishouden,
-  }
-}
-
-function gescoord(kandidaten: Recept[], slots: Slot[], c: Context): Recept[] {
-  const rest = restjes(slots, c.perId, c.verpakkingen, c.huishouden)
-  const s = new Map(kandidaten.map((r) => [r.id, score(r, c.week, c.gesch, rest, c.verpakkingen, c.huishouden, c.rnd[r.id])]))
-  return [...kandidaten].sort((a, b) => s.get(b.id)! - s.get(a.id)! || a.id.localeCompare(b.id))
-}
-
-export function stelVoor(recepten: Recept[], week: string, plannen: WeekPlan[], verpakkingen: Verpakkingen, huishouden: number): Slot[] {
-  const c = context(recepten, week, plannen, verpakkingen, huishouden)
-  const slots: Slot[] = []
-  for (;;) {
-    const ruimte = MAX_DAGEN - som(slots)
-    const kandidaten = recepten.filter((r) => r.dagen <= ruimte && !slots.some((s) => s.receptId === r.id))
-    if (kandidaten.length === 0) return slots
-    const beste = gescoord(kandidaten, slots, c)[0]
-    slots.push({ receptId: beste.id, dagen: beste.dagen })
-  }
-}
-
-export function alternatieven(
-  slotIndex: number, slots: Slot[], recepten: Recept[], week: string,
-  plannen: WeekPlan[], verpakkingen: Verpakkingen, huishouden: number,
+export function kandidaten(
+  gerechten: Gerecht[], recepten: Recept[], laatstGegeten: Record<string, string>,
+  verpakkingen: Verpakkingen, eters: number, seed: string, vandaag: Date,
 ): Recept[] {
-  const zonder = slots.filter((_, i) => i !== slotIndex)
-  const ruimte = MAX_DAGEN - som(zonder)
-  const kandidaten = recepten.filter((r) => r.dagen <= ruimte && !slots.some((s) => s.receptId === r.id))
-  return gescoord(kandidaten, zonder, context(recepten, week, plannen, verpakkingen, huishouden))
+  const perId = Object.fromEntries(recepten.map((r) => [r.id, r]))
+  const rest = restjes(gerechten, perId, verpakkingen)
+  const rnd = willekeur(recepten, seed)
+  const op = new Set(gerechten.map((g) => g.receptId))
+  const s = new Map(recepten.filter((r) => !op.has(r.id)).map((r) => [r.id, score(r, laatstGegeten, vandaag, rest, verpakkingen, eters, rnd[r.id])]))
+  return recepten.filter((r) => s.has(r.id)).sort((a, b) => s.get(b.id)! - s.get(a.id)! || a.id.localeCompare(b.id))
 }
 
-export function vervang(slots: Slot[], index: number, r: Recept): Slot[] {
-  const nieuw = slots.map((s, i) => (i === index ? { receptId: r.id, dagen: r.dagen } : s))
-  if (som(nieuw) > MAX_DAGEN) throw new Error('past niet')
-  return nieuw
+export function stelVoor(
+  recepten: Recept[], laatstGegeten: Record<string, string>, verpakkingen: Verpakkingen,
+  eters: number, seed: string, vandaag: Date, aantal = 3,
+): Gerecht[] {
+  const gerechten: Gerecht[] = []
+  while (gerechten.length < aantal) {
+    const beste = kandidaten(gerechten, recepten, laatstGegeten, verpakkingen, eters, seed, vandaag)[0]
+    if (!beste) break
+    gerechten.push({ receptId: beste.id, eters, gegetenOp: null, vorigeKeer: null })
+  }
+  return gerechten
 }

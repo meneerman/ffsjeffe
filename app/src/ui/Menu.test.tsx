@@ -1,0 +1,200 @@
+import { cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
+import { afterEach, beforeEach, expect, test, vi } from 'vitest'
+import { behoeften, boodschappenRegels } from '../core/boodschappen'
+import { gerecht, ing, recept } from '../core/testdata'
+import type { Menu as MenuT, Recept } from '../core/types'
+import { VerouderdFout } from '../data/github'
+import { Menu } from './Menu'
+import { NepRepo, PASTA, WRAPS } from './nepRepo'
+import type { AppData } from './useData'
+
+const NU = new Date('2026-11-21T12:00:00Z')
+beforeEach(() => localStorage.clear())
+afterEach(cleanup)
+
+const extra = (n: number) => Array.from({ length: n }, (_, i) => recept(`Extra ${i}`, [ing('ui', 1, 'stuk')]))
+const menu = (gerechten = [gerecht(PASTA, 2)], extraVelden: Partial<MenuT> = {}): MenuT => ({
+  versie: 2, ronde: '2026-11-20T10:00:00.000Z', gerechten, boodschappen: [], vastgezetOp: '2026-11-20T10:00:00.000Z',
+  door: 'Partner', leegmakenOp: null, laatstGegeten: {}, ...extraVelden,
+})
+
+async function toon(repo: NepRepo, recepten: Recept[] = [], herlaad = vi.fn()) {
+  repo.recepten_ = [...repo.recepten_, ...recepten]
+  const r = await repo.recepten()
+  const data: AppData = { ...r, menu: repo.menu_, instellingen: { huishouden: 2 }, keepStatus: null }
+  render(<Menu data={data} repo={repo} naam="Menno" herlaad={herlaad} hash="#/" nu={() => NU} />)
+  return { data, herlaad }
+}
+const kaarten = () => screen.queryAllByTestId('gerecht')
+const titels = () => kaarten().map((k) => within(k).getByRole('link').textContent)
+
+test('leeg menu: kop en een voorstel van 3', async () => {
+  await toon(new NepRepo(), extra(3))
+  expect(screen.getByRole('heading', { level: 1 }).textContent).toBe('Wat eten we deze keer?')
+  expect(kaarten()).toHaveLength(3)
+  expect(within(kaarten()[0]).getByText(/nog nooit/)).toBeTruthy()
+})
+
+test('x dagen geleden', async () => {
+  const repo = new NepRepo()
+  repo.menu_ = { menu: menu([gerecht(PASTA)], { laatstGegeten: { [PASTA]: '2026-11-03' } }), sha: 's' }
+  await toon(repo)
+  expect(screen.getByText(/18 dagen geleden/)).toBeTruthy()
+})
+
+test('＋ Gerecht erbij: kiezen, volgende, geen maximum', async () => {
+  await toon(new NepRepo(), extra(6))
+  await userEvent.click(screen.getByRole('button', { name: /Gerecht erbij/ }))
+  const dlg = screen.getByRole('dialog')
+  const eerste = within(dlg).getByRole('heading').textContent
+  await userEvent.click(within(dlg).getByRole('button', { name: 'Volgende' }))
+  expect(within(screen.getByRole('dialog')).getByRole('heading').textContent).not.toBe(eerste)
+  await userEvent.click(within(screen.getByRole('dialog')).getByRole('button', { name: 'Kies' }))
+  expect(kaarten()).toHaveLength(4)
+  for (let i = 0; i < 2; i++) {
+    await userEvent.click(screen.getByRole('button', { name: /Gerecht erbij/ }))
+    await userEvent.click(within(screen.getByRole('dialog')).getByRole('button', { name: 'Kies' }))
+  }
+  expect(kaarten()).toHaveLength(6)
+})
+
+test('verwijderen met ongedaan maken op dezelfde plek', async () => {
+  await toon(new NepRepo(), extra(3))
+  const voor = titels()
+  await userEvent.click(screen.getByRole('button', { name: `Verwijder ${voor[1]}` }))
+  await waitFor(() => expect(titels()).toEqual([voor[0], voor[2]]))
+  expect(screen.getByText(`${voor[1]} verwijderd`)).toBeTruthy()
+  await userEvent.click(screen.getByRole('button', { name: 'Ongedaan maken' }))
+  expect(titels()).toEqual(voor)
+})
+
+test('eters − + passen eters en boodschappen aan, minimaal 1', async () => {
+  const repo = new NepRepo()
+  repo.menu_ = { menu: menu([gerecht(PASTA, 2)]), sha: 's' }
+  await toon(repo)
+  await userEvent.click(screen.getByRole('button', { name: /Boodschappen/ }))
+  expect(screen.getByText('Pasta 200 g')).toBeTruthy()
+  await userEvent.click(screen.getByRole('button', { name: 'Meer eters' }))
+  expect(screen.getByLabelText('eters').textContent).toBe('3')
+  expect(screen.getByText('Pasta 300 g')).toBeTruthy()
+  for (let i = 0; i < 4; i++) await userEvent.click(screen.getByRole('button', { name: 'Minder eters' }))
+  expect(screen.getByLabelText('eters').textContent).toBe('1')
+})
+
+test('vastzetten schrijft het menu', async () => {
+  const repo = new NepRepo()
+  const { data, herlaad } = await toon(repo, extra(3))
+  const getoond = titels()
+  await userEvent.click(screen.getByRole('button', { name: /Op de boodschappenlijst/ }))
+  await screen.findByText(/Vastgezet door Menno/)
+  const { menu: m, sha, bericht } = repo.geschreven[0]
+  expect(sha).toBeNull()
+  expect(bericht).toBe('Menu vastgezet door Menno')
+  expect(m).toMatchObject({ versie: 2, door: 'Menno', ronde: NU.toISOString(), vastgezetOp: NU.toISOString() })
+  expect(m.gerechten.map((g) => g.receptId)).toEqual(getoond)
+  const perId = Object.fromEntries(data.recepten.map((r) => [r.id, r]))
+  expect(m.boodschappen).toEqual(boodschappenRegels(behoeften(m.gerechten, perId), data.verpakkingen))
+  expect(localStorage.getItem('ffsjeffe.concept')).toBeNull()
+  expect(herlaad).toHaveBeenCalled()
+})
+
+test('Keep leegmaken: bevestigen, annuleren, leegmaken', async () => {
+  const repo = new NepRepo()
+  repo.menu_ = { menu: menu([gerecht(PASTA)]), sha: 's' }
+  await toon(repo, extra(3))
+  await userEvent.click(screen.getByRole('button', { name: 'Keep leegmaken' }))
+  await userEvent.click(within(screen.getByRole('dialog')).getByRole('button', { name: 'Annuleren' }))
+  expect(repo.geschreven).toHaveLength(0)
+  await userEvent.click(screen.getByRole('button', { name: 'Keep leegmaken' }))
+  await userEvent.click(within(screen.getByRole('dialog')).getByRole('button', { name: 'Leegmaken' }))
+  await waitFor(() => expect(repo.geschreven).toHaveLength(1))
+  expect(repo.geschreven[0]).toMatchObject({ sha: 's', bericht: 'Keep leeggemaakt door Menno' })
+  expect(repo.geschreven[0].menu).toMatchObject({ gerechten: [], leegmakenOp: NU.toISOString() })
+  await waitFor(() => expect(kaarten()).toHaveLength(3))
+})
+
+test('gegeten-vinkje alleen op vastgezette gerechten, heen en terug', async () => {
+  const repo = new NepRepo()
+  repo.menu_ = { menu: menu([gerecht(PASTA)], { laatstGegeten: { [PASTA]: '2026-10-01' } }), sha: 's' }
+  await toon(repo)
+  await userEvent.click(screen.getByRole('button', { name: /Gerecht erbij/ }))
+  await userEvent.click(within(screen.getByRole('dialog')).getByRole('button', { name: 'Kies' }))
+  expect(screen.getAllByRole('button', { name: / gegeten$/ })).toHaveLength(1)
+  await userEvent.click(screen.getByRole('button', { name: `${PASTA} gegeten` }))
+  await screen.findByText('✓ gegeten vandaag')
+  const w = repo.geschreven[0]
+  expect(w.bericht).toBe(`${PASTA} gegeten — Menno`)
+  expect(w.menu.laatstGegeten[PASTA]).toBe('2026-11-21')
+  expect(w.menu.gerechten[0]).toMatchObject({ gegetenOp: '2026-11-21', vorigeKeer: '2026-10-01' })
+  expect(w.menu.boodschappen).toEqual(repo.geschreven[0].menu.boodschappen)
+  expect(titels().at(-1)).toBe(PASTA) // gegeten staat onderaan
+  await userEvent.click(screen.getByRole('button', { name: `${PASTA} gegeten` }))
+  await waitFor(() => expect(repo.geschreven).toHaveLength(2))
+  expect(repo.geschreven[1].menu.laatstGegeten[PASTA]).toBe('2026-10-01')
+})
+
+test('alles wegvegen: leeg menu met Nieuw voorstel', async () => {
+  const repo = new NepRepo()
+  repo.menu_ = { menu: menu([gerecht(PASTA)]), sha: 's' }
+  await toon(repo, extra(3))
+  await userEvent.click(screen.getByRole('button', { name: `Verwijder ${PASTA}` }))
+  await waitFor(() => expect(kaarten()).toHaveLength(0))
+  await userEvent.click(screen.getByRole('button', { name: 'Nieuw voorstel' }))
+  expect(kaarten()).toHaveLength(3)
+})
+
+test('een leeg menu vastzetten kan; daarna verschijnt vanzelf een voorstel', async () => {
+  const repo = new NepRepo()
+  repo.menu_ = { menu: menu([gerecht(PASTA)]), sha: 's' }
+  await toon(repo, extra(3))
+  await userEvent.click(screen.getByRole('button', { name: `Verwijder ${PASTA}` }))
+  await waitFor(() => expect(kaarten()).toHaveLength(0))
+  await userEvent.click(screen.getByRole('button', { name: /Op de boodschappenlijst/ }))
+  await waitFor(() => expect(repo.geschreven).toHaveLength(1))
+  expect(repo.geschreven[0].menu.gerechten).toEqual([])
+  await waitFor(() => expect(kaarten()).toHaveLength(3))
+})
+
+test('concept ouder dan de vastzetting van de partner vervalt', async () => {
+  localStorage.setItem('ffsjeffe.concept', JSON.stringify({ gerechten: [gerecht(PASTA)], sinds: '2026-11-20T08:00:00.000Z' }))
+  const repo = new NepRepo()
+  repo.menu_ = { menu: menu([gerecht(WRAPS)]), sha: 's' }
+  await toon(repo)
+  expect(titels()).toEqual([WRAPS])
+  expect(localStorage.getItem('ffsjeffe.concept')).toBeNull()
+})
+
+test('gerecht met verwijderd recept wordt niet getoond en niet geboodschapt', async () => {
+  const repo = new NepRepo()
+  repo.menu_ = { menu: menu([gerecht('Bestaat niet'), gerecht(PASTA)]), sha: 's' }
+  await toon(repo)
+  expect(titels()).toEqual([PASTA])
+  await userEvent.click(screen.getByRole('button', { name: /Op de boodschappenlijst/ }))
+  await waitFor(() => expect(repo.geschreven).toHaveLength(1))
+  expect(repo.geschreven[0].menu.gerechten.map((g) => g.receptId)).toEqual([PASTA])
+})
+
+test('VerouderdFout toont melding en Herladen', async () => {
+  const repo = new NepRepo()
+  repo.zetFout = new VerouderdFout()
+  const { herlaad } = await toon(repo, extra(3))
+  await userEvent.click(screen.getByRole('button', { name: /Op de boodschappenlijst/ }))
+  expect(await screen.findByText('Iemand anders heeft het menu net aangepast. Herlaad en probeer opnieuw.')).toBeTruthy()
+  await userEvent.click(screen.getByRole('button', { name: 'Herladen' }))
+  expect(herlaad).toHaveBeenCalled()
+})
+
+test('pull-to-refresh: omlaag trekken bovenaan herlaadt', async () => {
+  const { herlaad } = await toon(new NepRepo(), extra(3))
+  const vlak = screen.getByTestId('menu')
+  fireEvent.touchStart(vlak, { touches: [{ clientY: 10 }] })
+  fireEvent.touchMove(vlak, { touches: [{ clientY: 140 }] })
+  expect(screen.getByText('Loslaten om te verversen')).toBeTruthy()
+  fireEvent.touchEnd(vlak)
+  expect(herlaad).toHaveBeenCalledTimes(1)
+  fireEvent.touchStart(vlak, { touches: [{ clientY: 10 }] })
+  fireEvent.touchMove(vlak, { touches: [{ clientY: 40 }] })
+  fireEvent.touchEnd(vlak)
+  expect(herlaad).toHaveBeenCalledTimes(1)
+})

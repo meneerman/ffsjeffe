@@ -26,7 +26,8 @@ export function useData(repo: Repo | null): DataStaat & { herlaad: () => void } 
   useEffect(() => {
     if (!repo) return
     let actief = true
-    setStaat({ status: 'laden' })
+    // Verversen houdt de oude gegevens zichtbaar (geen flits naar "Laden…")
+    setStaat((s) => (s.status === 'klaar' ? s : { status: 'laden' }))
     Promise.all([repo.recepten(), repo.menu(), repo.instellingen(), repo.keepStatus()])
       .then(([r, menu, instellingen, keepStatus]) => {
         if (actief) setStaat({ status: 'klaar', data: { ...r, menu, instellingen, keepStatus } })

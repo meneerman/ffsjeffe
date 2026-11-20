@@ -8,9 +8,26 @@ const OMREKENING: Record<string, [number, string]> = {
   el: [15, 'ml'],
   tl: [5, 'ml'],
   stuk: [1, 'stuk'],
+  teentje: [1, 'teen'],
+  snufje: [1, 'snuf'],
 }
 
-/** Zet een hoeveelheid om naar de basiseenheid (g, ml, stuk). Onbekende eenheden blijven zichzelf. */
+/** Vaste lijst uit de spec: omrekenbaar + vast. Alleen deze woorden gelden als eenheid in een regel. */
+export const EENHEDEN = ['g', 'kg', 'ml', 'l', 'dl', 'cl', 'el', 'tl', 'teen', 'teentje', 'bosje', 'takje', 'snuf', 'snufje', 'blik', 'pak', 'zakje', 'plak', 'stuk'] as const
+
+const BREUKTEKENS: Record<string, number> = { '½': 0.5, '¼': 0.25, '¾': 0.75 }
+
+/** "2", "0,5", "1.5", "1/2", "½" → getal; anders null. */
+export function parseHoeveelheid(s: string): number | null {
+  const t = s.trim()
+  if (t in BREUKTEKENS) return BREUKTEKENS[t]
+  const breuk = /^(\d+)\/(\d+)$/.exec(t)
+  if (breuk) return Number(breuk[2]) === 0 ? null : Number(breuk[1]) / Number(breuk[2])
+  if (!/^\d+([.,]\d+)?$/.test(t)) return null
+  return Number(t.replace(',', '.'))
+}
+
+/** Zet een hoeveelheid om naar de basiseenheid (g, ml, stuk, …). Onbekende eenheden blijven zichzelf. */
 export function normaliseer(hoeveelheid: number, eenheid: string | null): { hoeveelheid: number; eenheid: string } {
   const e = (eenheid ?? 'stuk').trim().toLowerCase()
   const [factor, basis] = OMREKENING[e] ?? [1, e]

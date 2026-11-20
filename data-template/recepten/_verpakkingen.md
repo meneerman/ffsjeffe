@@ -1,8 +1,8 @@
 ---
 verpakkingen:
-  crème fraîche: {hoeveelheid: 200, eenheid: ml}
-  spinazie: {hoeveelheid: 300, eenheid: g}
-  kipfilet: {hoeveelheid: 300, eenheid: g}
-  wraps: {hoeveelheid: 8, eenheid: stuk}
+  - 200 ml crème fraîche
+  - 300 g spinazie
+  - 300 g kipfilet
+  - 8 wraps
 ---
-Verpakkingsgroottes: de boodschappenlijst rondt hiernaar af en het weekvoorstel probeert restjes op te maken.
+Verpakkingsgroottes. De boodschappenlijst rondt hiernaar af en het voorstel probeert restjes op te maken. Formaat per regel: hoeveelheid, eenheid, naam (zoals bij ingrediënten).

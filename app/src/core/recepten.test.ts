@@ -1,53 +1,86 @@
-import { leesVoorbeeld } from '../testhulp'
 import { expect, test } from 'vitest'
-import { parseRecept, parseVerpakkingen } from './recepten'
+import { leesVoorbeeld } from '../testhulp'
+import { parseHoeveelheid } from './eenheden'
+import { parseRecept, parseRegel, parseVerpakkingen } from './recepten'
 import type { Recept } from './types'
 
-const VOORBEELD = leesVoorbeeld('pasta-zalm.md')
+const PASTA = 'Pasta met zalm en crème fraîche.md'
 const fout = (x: unknown) => typeof x === 'object' && x !== null && 'fout' in x
+const recept = (fm: string, body = '') => parseRecept('recepten/X.md', `---\n${fm}\n---\n${body}`)
 
-test('parseert een geldig recept met standaardwaarden', () => {
-  const r = parseRecept('recepten/pasta-zalm.md', VOORBEELD) as Recept
-  expect(r.id).toBe('pasta-zalm')
+test('parseHoeveelheid', () => {
+  expect(parseHoeveelheid('2')).toBe(2)
+  expect(parseHoeveelheid('0,5')).toBe(0.5)
+  expect(parseHoeveelheid('1.5')).toBe(1.5)
+  expect(parseHoeveelheid('1/2')).toBe(0.5)
+  expect(parseHoeveelheid('½')).toBe(0.5)
+  expect(parseHoeveelheid('¼')).toBe(0.25)
+  expect(parseHoeveelheid('¾')).toBe(0.75)
+  expect(parseHoeveelheid('veel')).toBeNull()
+  expect(parseHoeveelheid('1/0')).toBeNull()
+})
+
+test('parseRegel', () => {
+  expect(parseRegel('400 g pasta')).toEqual({ naam: 'pasta', hoeveelheid: 400, eenheid: 'g' })
+  expect(parseRegel('2 zalmfilet')).toEqual({ naam: 'zalmfilet', hoeveelheid: 2, eenheid: 'stuk' })
+  expect(parseRegel('2 rode uien')).toEqual({ naam: 'rode uien', hoeveelheid: 2, eenheid: 'stuk' })
+  expect(parseRegel('1 teentje knoflook')).toEqual({ naam: 'knoflook', hoeveelheid: 1, eenheid: 'teen' })
+  expect(parseRegel('½ bosje peterselie')).toEqual({ naam: 'peterselie', hoeveelheid: 0.5, eenheid: 'bosje' })
+  expect(parseRegel('0,5 l melk')).toEqual({ naam: 'melk', hoeveelheid: 0.5, eenheid: 'l' })
+  expect(parseRegel('  peper  ')).toEqual({ naam: 'peper', hoeveelheid: null, eenheid: null })
+  expect(parseRegel('zout en peper')).toEqual({ naam: 'zout en peper', hoeveelheid: null, eenheid: null })
+  expect(fout(parseRegel('400 g'))).toBe(true)
+  expect(fout(parseRegel('2'))).toBe(true)
+  expect(fout(parseRegel('  '))).toBe(true)
+})
+
+test('parseert het voorbeeldrecept', () => {
+  const r = parseRecept(`recepten/${PASTA}`, leesVoorbeeld(PASTA)) as Recept
+  expect(r.id).toBe('Pasta met zalm en crème fraîche')
   expect(r.titel).toBe('Pasta met zalm en crème fraîche')
-  expect(r.dagen).toBe(1)
-  expect(r.personen).toBe(4)
-  expect(r.tijdMinuten).toBe(25)
-  expect(r.bron).toBe('https://example.com/pasta-zalm')
-  expect(r.ingredienten[2]).toEqual({ naam: 'crème fraîche', hoeveelheid: 100, eenheid: 'ml' })
-  expect(r.ingredienten[4]).toEqual({ naam: 'peper', hoeveelheid: null, eenheid: null })
-  expect(r.bereiding.trim()).toMatch(/^Kook de pasta\./)
+  expect(r).toMatchObject({ porties: 4, tijdMinuten: 25, avonden: 1, bron: 'https://example.com/pasta-zalm' })
+  expect(r.ingredienten).toHaveLength(6)
+  expect(r.ingredienten[4]).toEqual({ naam: 'knoflook', hoeveelheid: 1, eenheid: 'teen' })
+  expect(r.stappen).toEqual([
+    'Kook {400 g} pasta in ruim gezouten water beetgaar.',
+    'Bak de zalm in stukjes 3 min in een hete pan met de knoflook.',
+    'Roer {100 ml} crème fraîche en {300 g} spinazie erdoor tot de spinazie slinkt.',
+  ])
+  expect(r.notities).toBe('Lekker met wat citroenrasp erover.')
 })
 
-test('optionele velden krijgen standaardwaarden', () => {
-  const r = parseRecept('recepten/x.md', '---\ntitel: X\npersonen: 2\ningredienten:\n  - {naam: ui}\n---\n') as Recept
-  expect(r).toMatchObject({ dagen: 1, tijdMinuten: 0, bron: null, bereiding: '' })
+test('standaardwaarden', () => {
+  const r = recept('porties: 2\ningredienten: []') as Recept
+  expect(r).toMatchObject({ tijdMinuten: 0, avonden: 1, bron: null, stappen: [], notities: '' })
 })
 
-test('ontbrekende titel geeft een fout met pad', () =>
-  expect(parseRecept('recepten/x.md', '---\npersonen: 2\ningredienten: []\n---\n')).toEqual({ pad: 'recepten/x.md', fout: 'titel ontbreekt' }))
+test('bereiding stopt bij de volgende kop en negeert tekst buiten de lijst', () => {
+  const r = recept('porties: 2\ningredienten: []', '## Bereiding\nIntro.\n1. Een.\n2. Twee\n\n## Variaties\n1. Niet dit.') as Recept
+  expect(r.stappen).toEqual(['Een.', 'Twee'])
+})
 
-test('ingredienten geen lijst geeft een fout', () =>
-  expect(fout(parseRecept('recepten/x.md', '---\ntitel: X\npersonen: 2\ningredienten: ui\n---\n'))).toBe(true))
+test('fouten met reden', () => {
+  expect(parseRecept('recepten/X.md', 'alleen tekst')).toEqual({ pad: 'recepten/X.md', fout: 'geen frontmatter' })
+  expect(recept('ingredienten: []')).toEqual({ pad: 'recepten/X.md', fout: 'porties ontbreekt of is geen geheel getal ≥ 1' })
+  expect(fout(recept('porties: 0\ningredienten: []'))).toBe(true)
+  expect(fout(recept('porties: 2\ningredienten: ui'))).toBe(true)
+  expect(recept('porties: 2\ningredienten:\n  - 2 ui\n  - peper\n  - 400 g')).toEqual({ pad: 'recepten/X.md', fout: 'ingrediënt 3: "400 g" heeft geen naam' })
+  expect(fout(recept('porties: 2\navonden: 0\ningredienten: []'))).toBe(true)
+  expect(fout(recept('porties: [\n'))).toBe(true)
+})
 
-test('ingrediënt zonder naam geeft een fout', () =>
-  expect(fout(parseRecept('recepten/x.md', '---\ntitel: X\npersonen: 2\ningredienten:\n  - {hoeveelheid: 2}\n---\n'))).toBe(true))
+test('oud v1-formaat wordt een fout', () => {
+  const v1 = 'titel: X\npersonen: 4\ningredienten:\n  - {naam: pasta, hoeveelheid: 400, eenheid: g}'
+  expect(fout(recept(v1))).toBe(true)
+})
 
-test('personen ontbreekt of is 0 geeft een fout', () =>
-  expect(fout(parseRecept('recepten/x.md', '---\ntitel: X\npersonen: 0\ningredienten: []\n---\n'))).toBe(true))
+test('bron alleen http(s)', () => {
+  expect((recept('porties: 2\nbron: "javascript:alert(1)"\ningredienten: []') as Recept).bron).toBeNull()
+  expect((recept('porties: 2\nbron: http://a.nl/x\ningredienten: []') as Recept).bron).toBe('http://a.nl/x')
+})
 
-test('dagen buiten 1–5 geeft een fout', () =>
-  expect(fout(parseRecept('recepten/x.md', '---\ntitel: X\npersonen: 2\ndagen: 6\ningredienten: []\n---\n'))).toBe(true))
-
-test('kapotte YAML geeft een fout, geen exceptie', () =>
-  expect(fout(parseRecept('recepten/x.md', '---\ntitel: [\n---\n'))).toBe(true))
-
-test('geen frontmatter geeft een fout', () =>
-  expect(fout(parseRecept('recepten/x.md', 'alleen tekst'))).toBe(true))
-
-test('verpakkingen op genormaliseerde naam', () =>
-  expect(parseVerpakkingen('---\nverpakkingen:\n  Crème  Fraîche: {hoeveelheid: 200, eenheid: ml}\n---\n')).toEqual({
-    'crème fraîche': { hoeveelheid: 200, eenheid: 'ml' },
-  }))
-
-test('verpakkingenbestand zonder frontmatter geeft leeg', () => expect(parseVerpakkingen('niets')).toEqual({}))
+test('verpakkingen als lijst van regels', () => {
+  expect(parseVerpakkingen(leesVoorbeeld('_verpakkingen.md'))['crème fraîche']).toEqual({ hoeveelheid: 200, eenheid: 'ml' })
+  expect(parseVerpakkingen('---\nverpakkingen:\n  - 200 ml Crème  Fraîche\n  - peper\n  - 400 g\n---\n')).toEqual({ 'crème fraîche': { hoeveelheid: 200, eenheid: 'ml' } })
+  expect(parseVerpakkingen('niets')).toEqual({})
+})

@@ -1,14 +1,16 @@
 export type Ingredient = { naam: string; hoeveelheid: number | null; eenheid: string | null }
 
+/** id = titel = bestandsnaam zonder .md */
 export type Recept = {
   id: string
   titel: string
-  personen: number
+  porties: number
   tijdMinuten: number
-  dagen: number
+  avonden: number
   bron: string | null
   ingredienten: Ingredient[]
-  bereiding: string
+  stappen: string[]
+  notities: string
 }
 
 export type ReceptFout = { pad: string; fout: string }
@@ -17,15 +19,17 @@ export type Verpakking = { hoeveelheid: number; eenheid: string }
 /** Sleutel = sleutel(naam) */
 export type Verpakkingen = Record<string, Verpakking>
 
-export type Slot = { receptId: string; dagen: number }
+export type Gerecht = { receptId: string; eters: number; gegetenOp: string | null; vorigeKeer: string | null }
 
-export type WeekPlan = {
-  week: string
-  status: 'vastgezet'
-  slots: Slot[]
+export type Menu = {
+  versie: 2
+  ronde: string
+  gerechten: Gerecht[]
   boodschappen: string[]
   vastgezetOp: string
   door: string
+  leegmakenOp: string | null
+  laatstGegeten: Record<string, string>
 }
 
 export type Instellingen = { huishouden: number }

@@ -1,8 +1,25 @@
 import { parse } from 'yaml'
+import { EENHEDEN, parseHoeveelheid } from './eenheden'
 import type { Ingredient, Recept, ReceptFout, Verpakkingen } from './types'
 
 export function sleutel(naam: string): string {
   return naam.trim().toLowerCase().replace(/\s+/g, ' ')
+}
+
+const VASTE_SYNONIEMEN: Record<string, string> = { teentje: 'teen', snufje: 'snuf' }
+
+/** Eén ingrediëntregel: "<hoeveelheid> <eenheid> <naam>" | "<hoeveelheid> <naam>" | "<naam>". */
+export function parseRegel(tekst: string): Ingredient | { fout: string } {
+  const delen = tekst.trim().split(/\s+/).filter(Boolean)
+  if (delen.length === 0) return { fout: 'lege regel' }
+  const h = parseHoeveelheid(delen[0])
+  if (h === null) return { naam: delen.join(' '), hoeveelheid: null, eenheid: null }
+  const tweede = delen[1]?.toLowerCase()
+  const isEenheid = tweede !== undefined && (EENHEDEN as readonly string[]).includes(tweede)
+  const naam = delen.slice(isEenheid ? 2 : 1).join(' ')
+  if (!naam) return { fout: `"${tekst.trim()}" heeft geen naam` }
+  const eenheid = isEenheid ? VASTE_SYNONIEMEN[tweede] ?? tweede : 'stuk'
+  return { naam, hoeveelheid: h, eenheid }
 }
 
 /** Splitst een notitie in frontmatter (geparsed) en de rest. Gooit bij kapotte YAML. */
@@ -12,8 +29,38 @@ function splits(markdown: string): { data: unknown; rest: string } | null {
   return { data: parse(m[1]), rest: m[2] }
 }
 
-const isGetal = (x: unknown): x is number => typeof x === 'number' && Number.isFinite(x)
 const isObject = (x: unknown): x is Record<string, unknown> => typeof x === 'object' && x !== null && !Array.isArray(x)
+const isGeheel = (x: unknown, min: number): x is number => typeof x === 'number' && Number.isInteger(x) && x >= min
+
+/** Tekst onder "## <kop>" tot de volgende "## ". */
+function sectie(body: string, kop: string): string {
+  const regels = body.split(/\r?\n/)
+  const start = regels.findIndex((r) => r.trim().toLowerCase() === `## ${kop}`)
+  if (start < 0) return ''
+  const rest = regels.slice(start + 1)
+  const einde = rest.findIndex((r) => /^##\s/.test(r))
+  return (einde < 0 ? rest : rest.slice(0, einde)).join('\n').trim()
+}
+
+/** De eerste genummerde lijst in een tekst; vervolgregels horen bij het vorige item. */
+function genummerdeLijst(tekst: string): string[] {
+  const stappen: string[] = []
+  let bezig = false
+  for (const regel of tekst.split(/\r?\n/)) {
+    const m = /^\s*\d+[.)]\s+(.*)$/.exec(regel)
+    if (m) {
+      stappen.push(m[1].trim())
+      bezig = true
+    } else if (bezig && regel.trim() === '') {
+      continue
+    } else if (bezig && /^\s+\S/.test(regel)) {
+      stappen[stappen.length - 1] += ` ${regel.trim()}`
+    } else if (bezig) {
+      break
+    }
+  }
+  return stappen
+}
 
 export function parseRecept(pad: string, markdown: string): Recept | ReceptFout {
   const fout = (f: string): ReceptFout => ({ pad, fout: f })
@@ -26,29 +73,31 @@ export function parseRecept(pad: string, markdown: string): Recept | ReceptFout 
   if (!delen) return fout('geen frontmatter')
   const d = delen.data
   if (!isObject(d)) return fout('frontmatter is leeg')
-  if (typeof d.titel !== 'string' || !d.titel.trim()) return fout('titel ontbreekt')
-  if (!isGetal(d.personen) || d.personen <= 0) return fout('personen ontbreekt of is geen getal > 0')
-  const dagen = d.dagen ?? 1
-  if (!isGetal(dagen) || !Number.isInteger(dagen) || dagen < 1 || dagen > 5) return fout('dagen moet 1 t/m 5 zijn')
+  if (!isGeheel(d.porties, 1)) return fout('porties ontbreekt of is geen geheel getal ≥ 1')
+  const avonden = d.avonden ?? 1
+  if (!isGeheel(avonden, 1)) return fout('avonden moet een geheel getal ≥ 1 zijn')
   if (!Array.isArray(d.ingredienten)) return fout('ingredienten is geen lijst')
 
   const ingredienten: Ingredient[] = []
   for (const [i, x] of d.ingredienten.entries()) {
-    if (!isObject(x) || typeof x.naam !== 'string' || !x.naam.trim()) return fout(`ingrediënt ${i + 1} heeft geen naam`)
-    const hoeveelheid = isGetal(x.hoeveelheid) ? x.hoeveelheid : null
-    const eenheid = typeof x.eenheid === 'string' && x.eenheid.trim() ? x.eenheid.trim() : null
-    ingredienten.push({ naam: x.naam.trim(), hoeveelheid, eenheid })
+    if (typeof x !== 'string') return fout(`ingrediënt ${i + 1} is geen tekstregel (oud formaat?)`)
+    const r = parseRegel(x)
+    if ('fout' in r) return fout(`ingrediënt ${i + 1}: ${r.fout}`)
+    ingredienten.push(r)
   }
 
+  const titel = pad.split('/').pop()!.replace(/\.md$/, '')
+  const bron = typeof d.bron === 'string' && /^https?:\/\//i.test(d.bron.trim()) ? d.bron.trim() : null
   return {
-    id: pad.split('/').pop()!.replace(/\.md$/, ''),
-    titel: d.titel.trim(),
-    personen: d.personen,
-    tijdMinuten: isGetal(d.tijd_minuten) ? d.tijd_minuten : 0,
-    dagen,
-    bron: typeof d.bron === 'string' && d.bron.trim() ? d.bron.trim() : null,
+    id: titel,
+    titel,
+    porties: d.porties,
+    tijdMinuten: isGeheel(d.tijd, 0) ? d.tijd : 0,
+    avonden,
+    bron,
     ingredienten,
-    bereiding: delen.rest,
+    stappen: genummerdeLijst(sectie(delen.rest, 'bereiding')),
+    notities: sectie(delen.rest, 'notities'),
   }
 }
 
@@ -59,12 +108,13 @@ export function parseVerpakkingen(markdown: string): Verpakkingen {
   } catch {
     return {}
   }
-  if (!delen || !isObject(delen.data) || !isObject(delen.data.verpakkingen)) return {}
+  if (!delen || !isObject(delen.data) || !Array.isArray(delen.data.verpakkingen)) return {}
   const uit: Verpakkingen = {}
-  for (const [naam, v] of Object.entries(delen.data.verpakkingen)) {
-    if (isObject(v) && isGetal(v.hoeveelheid) && v.hoeveelheid > 0 && typeof v.eenheid === 'string') {
-      uit[sleutel(naam)] = { hoeveelheid: v.hoeveelheid, eenheid: v.eenheid.trim() }
-    }
+  for (const x of delen.data.verpakkingen) {
+    if (typeof x !== 'string') continue
+    const r = parseRegel(x)
+    if ('fout' in r || r.hoeveelheid === null || r.hoeveelheid <= 0) continue
+    uit[sleutel(r.naam)] = { hoeveelheid: r.hoeveelheid, eenheid: r.eenheid! }
   }
   return uit
 }

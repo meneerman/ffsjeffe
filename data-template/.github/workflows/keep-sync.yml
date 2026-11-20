@@ -20,7 +20,7 @@ jobs:
       - uses: actions/checkout@v4
         with:
           repository: meneerman/ffsjeffe
-          ref: v1
+          ref: main
           path: code
       - uses: actions/setup-python@v5
         with:

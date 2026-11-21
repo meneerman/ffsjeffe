@@ -489,18 +489,35 @@ test('wegnavigeren voor het uitstel om is: het concept wordt alsnog meteen bewaa
   await waitFor(() => expect(repo.conceptGeschreven).toHaveLength(1))
 })
 
-test('"Staat in Keep ✓" hoort bij het vastgezette menu en verdwijnt zodra je aan een concept werkt', async () => {
+test('"Staat in Keep ✓" staat alleen in Bereiden, nooit in Plannen', async () => {
   const repo = new NepRepo()
-  repo.menu_ = { menu: menu([gerecht(PASTA, 2)]), sha: 's' }
+  repo.menu_ = { menu: menu([gerecht(PASTA, 2)], { boodschappen: ['Pasta 200 g'] }), sha: 's' }
   repo.status_ = { tijd: '2026-11-20T10:05:00.000Z', ok: true, melding: '', weken: [] }
-  await toon(repo, extra(3))
+  await toon(repo, extra(3), vi.fn(), 'standaard')
   expect(screen.getByText('Staat in Keep ✓')).toBeTruthy()
+  await userEvent.click(screen.getByRole('tab', { name: 'Plannen' }))
+  expect(screen.queryByText('Staat in Keep ✓')).toBeNull()
   await userEvent.click(screen.getByRole('button', { name: /Gerecht erbij/ }))
   await userEvent.click(within(screen.getByRole('dialog')).getByRole('button', { name: 'Erbij' }))
   await waitFor(() => expect(kaarten()).toHaveLength(1))
   expect(screen.queryByText('Staat in Keep ✓')).toBeNull()
   expect(screen.getByText(/nog niet op Keep/)).toBeTruthy()
   expect(repo.geschreven).toHaveLength(0)
+})
+
+test('"Staat in Keep ✓" niet bij een leeggemaakt menu of een lege lijst', async () => {
+  const status = { tijd: '2026-11-20T10:05:00.000Z', ok: true, melding: '', weken: [] }
+  const leeg = new NepRepo()
+  leeg.menu_ = { menu: menu([], { leegmakenOp: '2026-11-20T11:00:00.000Z', boodschappen: [] }), sha: 's' }
+  leeg.status_ = status
+  await toon(leeg, extra(3))
+  expect(screen.queryByText('Staat in Keep ✓')).toBeNull()
+  cleanup()
+  const nietsOpLijst = new NepRepo()
+  nietsOpLijst.menu_ = { menu: menu([gerecht(PASTA, 2)], { boodschappen: [] }), sha: 's' }
+  nietsOpLijst.status_ = status
+  await toon(nietsOpLijst, [], vi.fn(), 'standaard')
+  expect(screen.queryByText('Staat in Keep ✓')).toBeNull()
 })
 
 // ---- bereiden-modus ----
@@ -701,4 +718,11 @@ test('in het bevestigscherm kun je nog uitvinken; dat gaat niet naar Keep', asyn
   const regels = repo.geschreven[0].menu.boodschappen
   expect(regels.some((r) => r.startsWith('Olijfolie'))).toBe(false)
   expect(regels.some((r) => r.startsWith('Pasta'))).toBe(true)
+})
+
+test('de merknaam is ff (wit, even) en sjeffe (paars, chef)', async () => {
+  await toon(new NepRepo(), extra(3))
+  const kop = screen.getByRole('heading', { level: 1 })
+  expect(kop.textContent).toBe('ffsjeffe')
+  expect(kop.querySelector('em')?.textContent).toBe('sjeffe')
 })

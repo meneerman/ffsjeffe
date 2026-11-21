@@ -186,7 +186,7 @@ export function Menu({ data, repo, naam, herlaad, bijgewerkt, nu = () => new Dat
           )}
         </div>
       )}
-      <KeepStatusMelding key={menu?.vastgezetOp ?? 'geen'} repo={repo} vastgezetOp={menu?.vastgezetOp ?? null} begin={data.keepStatus} />
+      <KeepStatusMelding key={menu?.vastgezetOp ?? 'geen'} repo={repo} vastgezetOp={menu?.vastgezetOp ?? null} begin={data.keepStatus} verberg={concept.heeftConcept} />
 
       {data.recepten.length === 0 ? (
         <p className="kaart">Nog geen recepten. Voeg ze toe in Obsidian in de map <code>recepten</code>.</p>

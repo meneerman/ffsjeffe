@@ -28,7 +28,7 @@ const menu = (gerechten = [gerecht(PASTA, 2)], extraVelden: Partial<MenuT> = {})
 async function toon(repo: NepRepo, recepten: Recept[] = [], herlaad = vi.fn()) {
   repo.recepten_ = [...repo.recepten_, ...recepten]
   const r = await repo.recepten()
-  const data: AppData = { ...r, menu: repo.menu_, instellingen: { huishouden: 2 }, keepStatus: null, concept: repo.concept_ }
+  const data: AppData = { ...r, menu: repo.menu_, instellingen: { huishouden: 2 }, keepStatus: repo.status_, concept: repo.concept_ }
   function Houder() {
     const [d, setD] = useState(data)
     return <Menu data={d} repo={repo} naam="Menno" herlaad={herlaad} bijgewerkt={(menu) => setD((x) => ({ ...x, menu }))} hash="#/" nu={() => NU} bewaarVertraging={0} />
@@ -478,4 +478,16 @@ test('wegnavigeren voor het uitstel om is: het concept wordt alsnog meteen bewaa
   expect(repo.conceptGeschreven).toHaveLength(0)
   unmount()
   await waitFor(() => expect(repo.conceptGeschreven).toHaveLength(1))
+})
+
+test('"Staat in Keep ✓" hoort bij het vastgezette menu en verdwijnt zodra je aan een concept werkt', async () => {
+  const repo = new NepRepo()
+  repo.menu_ = { menu: menu([gerecht(PASTA, 2)]), sha: 's' }
+  repo.status_ = { tijd: '2026-11-20T10:05:00.000Z', ok: true, melding: '', weken: [] }
+  await toon(repo, extra(3))
+  expect(screen.getByText('Staat in Keep ✓')).toBeTruthy()
+  await userEvent.click(within(kaartDiv(0)).getByRole('button', { name: 'Meer eters' }))
+  expect(screen.queryByText('Staat in Keep ✓')).toBeNull()
+  expect(screen.getByText(/nog niet op Keep/)).toBeTruthy()
+  expect(repo.geschreven).toHaveLength(0)
 })

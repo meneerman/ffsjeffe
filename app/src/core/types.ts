@@ -1,9 +1,13 @@
+export const SOORTEN = ['ontbijt', 'lunch', 'avondeten', 'voorgerecht', 'toetje', 'snack'] as const
+export type Soort = (typeof SOORTEN)[number]
+
 export type Ingredient = { naam: string; hoeveelheid: number | null; eenheid: string | null }
 
 /** id = titel = bestandsnaam zonder .md */
 export type Recept = {
   id: string
   titel: string
+  soort: Soort
   porties: number
   tijdMinuten: number
   /** standaard aantal avonden waarvoor je dit gerecht kookt (batch: meer dan 1); per gerecht aan te passen */

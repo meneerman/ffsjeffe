@@ -94,3 +94,10 @@ test('benodigdheden en voorbereiding mogen opsomming of genummerd zijn', () => {
   expect(r.voorbereiding).toEqual(['Snipper de ui.', 'Weeg de bloem af.'])
   expect(r.stappen).toEqual(['Bak.'])
 })
+
+test('soort: standaard avondeten, vaste lijst, anders een fout', () => {
+  expect((recept('porties: 2\ningredienten: []') as Recept).soort).toBe('avondeten')
+  expect((recept('porties: 2\nsoort: toetje\ningredienten: []') as Recept).soort).toBe('toetje')
+  expect((recept('porties: 2\nsoort: Ontbijt\ningredienten: []') as Recept).soort).toBe('ontbijt')
+  expect(recept('porties: 2\nsoort: brunch\ningredienten: []')).toEqual({ pad: 'recepten/X.md', fout: 'soort moet een van ontbijt, lunch, avondeten, voorgerecht, toetje, snack zijn' })
+})

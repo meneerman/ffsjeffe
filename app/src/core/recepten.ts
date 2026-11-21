@@ -1,6 +1,6 @@
 import { parse } from 'yaml'
 import { EENHEDEN, parseHoeveelheid } from './eenheden'
-import type { Ingredient, Recept, ReceptFout, Verpakkingen } from './types'
+import { SOORTEN, type Ingredient, type Recept, type ReceptFout, type Soort, type Verpakkingen } from './types'
 
 export function sleutel(naam: string): string {
   return naam.trim().toLowerCase().replace(/\s+/g, ' ')
@@ -76,6 +76,8 @@ export function parseRecept(pad: string, markdown: string): Recept | ReceptFout 
   if (!isGeheel(d.porties, 1)) return fout('porties ontbreekt of is geen geheel getal ≥ 1')
   const avonden = d.avonden ?? 1
   if (!isGeheel(avonden, 1)) return fout('avonden moet een geheel getal ≥ 1 zijn')
+  const soort = typeof d.soort === 'string' ? d.soort.trim().toLowerCase() : d.soort === undefined || d.soort === null ? 'avondeten' : ''
+  if (!(SOORTEN as readonly string[]).includes(soort)) return fout(`soort moet een van ${SOORTEN.join(', ')} zijn`)
   if (!Array.isArray(d.ingredienten)) return fout('ingredienten is geen lijst')
 
   const ingredienten: Ingredient[] = []
@@ -91,6 +93,7 @@ export function parseRecept(pad: string, markdown: string): Recept | ReceptFout 
   return {
     id: titel,
     titel,
+    soort: soort as Soort,
     porties: d.porties,
     tijdMinuten: isGeheel(d.tijd, 0) ? d.tijd : 0,
     avonden,

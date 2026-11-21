@@ -61,3 +61,9 @@ test('kandidaten sluiten het menu uit, beste eerst', () => {
   expect(k.map((r) => r.id).sort()).toEqual(['B', 'C'])
   expect(k[0].id).toBe('C')
 })
+
+test('voorstel en kandidaten gebruiken alleen avondeten', () => {
+  const rs = [recept('Toetje', [], { soort: 'toetje' }), recept('Ontbijt', [], { soort: 'ontbijt' }), recept('Diner', [])]
+  expect(stelVoor(rs, {}, {}, 4, 'z', NU).map((g) => g.receptId)).toEqual(['Diner'])
+  expect(kandidaten([], rs, {}, {}, 4, 'z', NU).map((r) => r.id)).toEqual(['Diner'])
+})

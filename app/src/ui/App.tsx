@@ -7,6 +7,7 @@ import { useData, type AppData, type Repo } from './useData'
 import { Achtergrond } from './Achtergrond'
 import { Menu } from './Menu'
 import { ReceptPagina } from './Recept'
+import { Recepten } from './Recepten'
 import './stijl.css'
 
 export function useHash(): string {
@@ -29,6 +30,7 @@ function Inhoud(p: SchermProps) {
       <p className="kaart">Recept niet gevonden. <a className="link-accent" href="#/">Terug naar het menu</a></p>
     )
   }
+  if (p.hash === '#/recepten') return <Recepten {...p} />
   return <Menu {...p} />
 }
 

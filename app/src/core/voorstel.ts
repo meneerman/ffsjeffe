@@ -81,7 +81,7 @@ export function kandidaten(
   const rest = restjes(gerechten, perId, verpakkingen)
   const rnd = willekeur(recepten, seed)
   const op = new Set(gerechten.map((g) => g.receptId))
-  const s = new Map(recepten.filter((r) => !op.has(r.id)).map((r) => [r.id, score(r, laatstGegeten, vandaag, rest, verpakkingen, eters, rnd[r.id])]))
+  const s = new Map(recepten.filter((r) => r.soort === 'avondeten' && !op.has(r.id)).map((r) => [r.id, score(r, laatstGegeten, vandaag, rest, verpakkingen, eters, rnd[r.id])]))
   return recepten.filter((r) => s.has(r.id)).sort((a, b) => s.get(b.id)! - s.get(a.id)! || a.id.localeCompare(b.id))
 }
 

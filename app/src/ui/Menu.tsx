@@ -24,6 +24,7 @@ function geledenTekst(datum: string | undefined, nu: Date): string {
 /** "25 min · 12 porties · 18 dagen geleden"; porties alleen bij meer dan één avond. */
 export function receptMeta(r: Recept, laatstGegeten: Record<string, string>, nu: Date, eters: number, avonden: number): string {
   return [
+    r.soort !== 'avondeten' && r.soort,
     r.tijdMinuten > 0 && `${r.tijdMinuten} min`,
     avonden > 1 && `${aantalPorties(eters, avonden)} porties`,
     geledenTekst(laatstGegeten[r.id], nu),
@@ -182,9 +183,12 @@ export function Menu({ data, repo, naam, herlaad, bijgewerkt, nu = () => new Dat
       )}
 
       {data.recepten.length > 0 && (
-        <button className="erbij" onClick={() => setToevoegen(true)}>
-          <span className="plus" aria-hidden="true">+</span> Gerecht erbij
-        </button>
+        <div className="erbij-rij">
+          <button className="erbij" onClick={() => setToevoegen(true)}>
+            <span className="plus" aria-hidden="true">+</span> Gerecht erbij
+          </button>
+          <a className="alle-recepten" href="#/recepten">☰ Alle recepten</a>
+        </div>
       )}
 
       <Boodschappen regels={regels} />

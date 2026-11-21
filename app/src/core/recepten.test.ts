@@ -1,7 +1,7 @@
 import { expect, test } from 'vitest'
 import { leesVoorbeeld } from '../testhulp'
 import { parseHoeveelheid } from './eenheden'
-import { parseRecept, parseRegel, parseVerpakkingen } from './recepten'
+import { parseCategorieen, parseRecept, parseRegel, parseVerpakkingen } from './recepten'
 import type { Recept } from './types'
 
 const PASTA = 'Pasta met zalm en crème fraîche.md'
@@ -18,6 +18,27 @@ test('parseHoeveelheid', () => {
   expect(parseHoeveelheid('¾')).toBe(0.75)
   expect(parseHoeveelheid('veel')).toBeNull()
   expect(parseHoeveelheid('1/0')).toBeNull()
+})
+
+test('parseRegel leest een getal direct aan de eenheid', () => {
+  expect(parseRegel('400g pasta')).toEqual({ naam: 'pasta', hoeveelheid: 400, eenheid: 'g' })
+  expect(parseRegel('1,5kg aardappelen')).toEqual({ naam: 'aardappelen', hoeveelheid: 1.5, eenheid: 'kg' })
+  expect(parseRegel('500ml melk')).toEqual({ naam: 'melk', hoeveelheid: 500, eenheid: 'ml' })
+})
+
+test('parseRegel neemt bij een bereik het hoogste getal', () => {
+  expect(parseRegel('2-3 tomaten')).toEqual({ naam: 'tomaten', hoeveelheid: 3, eenheid: 'stuk' })
+  expect(parseRegel('2–3 el olie')).toEqual({ naam: 'olie', hoeveelheid: 3, eenheid: 'el' })
+})
+
+test('parseRegel geeft een fout bij een onleesbaar getal in plaats van stil de hoeveelheid te verliezen', () => {
+  for (const regel of ['1½ tl zout', '1 1/2 el olie', '200gram pasta', '400g']) {
+    expect(fout(parseRegel(regel)), regel).toBe(true)
+  }
+})
+
+test('parseRegel laat een naam zonder getal ongemoeid', () => {
+  expect(parseRegel('zout')).toEqual({ naam: 'zout', hoeveelheid: null, eenheid: null })
 })
 
 test('parseRegel', () => {
@@ -108,4 +129,15 @@ test('invriezen: ja/nee/true/false, standaard nee, anders een fout', () => {
   expect((recept('porties: 2\ninvriezen: true\ningredienten: []') as Recept).invriezen).toBe(true)
   expect((recept('porties: 2\ninvriezen: nee\ningredienten: []') as Recept).invriezen).toBe(false)
   expect(recept('porties: 2\ninvriezen: misschien\ningredienten: []')).toEqual({ pad: 'recepten/X.md', fout: 'invriezen moet ja of nee zijn' })
+})
+
+test('parseCategorieen leest een map van categorie naar namen, met kleine letters als sleutel', () => {
+  const md = '---\nGroente & fruit:\n  - Ui\n  - paprika\nOverig:\n  - zout\n---\nuitleg'
+  expect(parseCategorieen(md)).toEqual({ ui: 'Groente & fruit', paprika: 'Groente & fruit', zout: 'Overig' })
+})
+
+test('parseCategorieen slaat onbekende categorieën en rommel over en geeft {} bij kapotte of ontbrekende frontmatter', () => {
+  expect(parseCategorieen('---\nOnzin:\n  - ui\nZuivel & eieren:\n  - 5\n  - melk\n---\n')).toEqual({ melk: 'Zuivel & eieren' })
+  expect(parseCategorieen('---\n: [kapot\n---\n')).toEqual({})
+  expect(parseCategorieen('geen frontmatter')).toEqual({})
 })

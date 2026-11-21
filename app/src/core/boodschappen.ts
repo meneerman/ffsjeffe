@@ -1,6 +1,6 @@
 import { normaliseer, zuiver } from './eenheden'
 import { sleutel } from './recepten'
-import type { Gerecht, Recept, Verpakkingen } from './types'
+import { CATEGORIEEN, type Categorie, type Categorieen, type Gerecht, type Recept, type Verpakkingen } from './types'
 
 /** Opgeteld over het menu, in basiseenheid. hoeveelheid null = naar smaak. */
 export type Behoefte = { naam: string; hoeveelheid: number | null; eenheid: string | null }
@@ -58,17 +58,37 @@ export function aantalVerpakkingen(b: Behoefte, verpakkingen: Verpakkingen): num
 
 const hoofdletter = (s: string) => s.charAt(0).toLocaleUpperCase('nl') + s.slice(1)
 
-export function boodschappenRegels(b: Behoefte[], verpakkingen: Verpakkingen): string[] {
-  const regels = b.map((x) => {
+/** Een boodschappenregel met het ingrediënt waar hij bij hoort (nodig om per categorie te groeperen). */
+export type BoodschappenItem = { naam: string; regel: string }
+
+export function boodschappenItems(b: Behoefte[], verpakkingen: Verpakkingen): BoodschappenItem[] {
+  const items = b.map((x) => {
     const naam = hoofdletter(x.naam)
-    if (x.hoeveelheid === null) return naam
+    if (x.hoeveelheid === null) return { naam: x.naam, regel: naam }
     const n = aantalVerpakkingen(x, verpakkingen)
     if (n !== null) {
       const v = verpakkingen[sleutel(x.naam)]
-      return `${naam} ${n}× ${v.hoeveelheid} ${v.eenheid}`
+      return { naam: x.naam, regel: `${naam} ${n}× ${v.hoeveelheid} ${v.eenheid}` }
     }
     const h = Math.ceil(zuiver(x.hoeveelheid))
-    return x.eenheid === 'stuk' ? `${naam} ${h}` : `${naam} ${h} ${x.eenheid}`
+    return { naam: x.naam, regel: x.eenheid === 'stuk' ? `${naam} ${h}` : `${naam} ${h} ${x.eenheid}` }
   })
-  return regels.sort((a, c) => a.localeCompare(c, 'nl'))
+  return items.sort((a, c) => a.regel.localeCompare(c.regel, 'nl'))
+}
+
+export function boodschappenRegels(b: Behoefte[], verpakkingen: Verpakkingen): string[] {
+  return boodschappenItems(b, verpakkingen).map((i) => i.regel)
+}
+
+/** Per supermarktafdeling, in winkelvolgorde; lege afdelingen blijven weg en wat onbekend is gaat naar Overig. */
+export function groepeerPerCategorie(items: BoodschappenItem[], categorieen: Categorieen): { categorie: Categorie; items: BoodschappenItem[] }[] {
+  const groepen = new Map<Categorie, BoodschappenItem[]>()
+  for (const item of items) {
+    const c = categorieen[sleutel(item.naam)] ?? 'Overig'
+    groepen.set(c, [...(groepen.get(c) ?? []), item])
+  }
+  return CATEGORIEEN.filter((c) => groepen.has(c)).map((categorie) => ({
+    categorie,
+    items: groepen.get(categorie)!.sort((a, c) => a.regel.localeCompare(c.regel, 'nl')),
+  }))
 }

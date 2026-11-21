@@ -1,5 +1,5 @@
 import { expect, test } from 'vitest'
-import { behoeften, boodschappenRegels } from './boodschappen'
+import { behoeften, boodschappenItems, boodschappenRegels, groepeerPerCategorie } from './boodschappen'
 import { normaliseer } from './eenheden'
 import { gerecht, ing, recept } from './testdata'
 
@@ -61,4 +61,31 @@ test('"naar smaak" en een snufje gaan op in een echte hoeveelheid van hetzelfde 
   expect(regels(['a', 'b', 'c'])).toEqual(['Honing', 'Olijfolie 45 ml', 'Zout 3 g'])
   expect(regels(['a'])).toEqual(['Honing', 'Olijfolie', 'Zout 1 snuf']) // alleen snuf + naar smaak: één regel
   expect(regels(['a', 'c'])).toEqual(['Honing', 'Olijfolie 15 ml', 'Zout 1 snuf'])
+})
+
+const verpakkingen = { 'crème fraîche': { hoeveelheid: 200, eenheid: 'ml' } }
+
+test('boodschappenItems geeft dezelfde regels als boodschappenRegels, met de naam erbij', () => {
+  const b = behoeften([gerecht('p', 4), gerecht('w', 4)], { p: pasta, w: wraps })
+  const items = boodschappenItems(b, verpakkingen)
+  expect(items.map((i) => i.regel)).toEqual(boodschappenRegels(b, verpakkingen))
+  expect(items.find((i) => i.regel.startsWith('Crème'))).toEqual({ naam: 'crème fraîche', regel: 'Crème fraîche 1× 200 ml' })
+})
+
+test('groepeerPerCategorie: vaste volgorde, lege groepen weg, onbekend onder Overig, hoofdletterongevoelig', () => {
+  const items = [
+    { naam: 'Olijfolie', regel: 'Olijfolie 30 ml' },
+    { naam: 'ui', regel: 'Ui 2' },
+    { naam: 'mysterie', regel: 'Mysterie 1' },
+    { naam: 'ui', regel: 'Ui 100 g' },
+    { naam: 'melk', regel: 'Melk 1 l' },
+  ]
+  const c = { olijfolie: 'Olie, sauzen & azijn', ui: 'Groente & fruit', melk: 'Zuivel & eieren' } as const
+  expect(groepeerPerCategorie(items, c).map((g) => [g.categorie, g.items.map((i) => i.regel)])).toEqual([
+    ['Groente & fruit', ['Ui 100 g', 'Ui 2']],
+    ['Zuivel & eieren', ['Melk 1 l']],
+    ['Olie, sauzen & azijn', ['Olijfolie 30 ml']],
+    ['Overig', ['Mysterie 1']],
+  ])
+  expect(groepeerPerCategorie([], {})).toEqual([])
 })

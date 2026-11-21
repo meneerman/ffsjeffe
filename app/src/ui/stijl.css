@@ -222,3 +222,15 @@ footer { margin-top: 40px; text-align: center; }
 .modus button.aan { background: var(--tekst); color: var(--bg); }
 .voortgang { margin: 0 0 10px; }
 .gerecht.bereid .gerecht-bediening { justify-content: flex-end; }
+
+/* boodschappen nalopen: per afdeling, vink uit wat je al hebt */
+.nalopen { margin-top: 18px; }
+.nalopen-kop { font-size: 17px; font-weight: 500; margin: 0 2px 10px; }
+.nalopen-groep { margin-bottom: 10px; padding: 10px 16px 6px; }
+.nalopen-groep h3 { margin: 0 0 2px; font-size: 11px; font-weight: 500; letter-spacing: 0.16em; text-transform: uppercase; color: var(--zacht); }
+.nalopen-groep ul { list-style: none; margin: 0; padding: 0; }
+.nalopen-groep li { border-bottom: 1px solid var(--rand); }
+.nalopen-groep li:last-child { border-bottom: 0; }
+.nalopen-groep label { display: flex; align-items: center; gap: 12px; min-height: 44px; font-size: 15px; cursor: pointer; }
+.nalopen-groep input { width: 20px; height: 20px; flex: none; accent-color: #d9c9a3; }
+.nalopen-groep input:not(:checked) + span { color: var(--zacht); text-decoration: line-through; }

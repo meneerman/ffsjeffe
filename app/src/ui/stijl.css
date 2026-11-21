@@ -193,3 +193,6 @@ footer { margin-top: 40px; text-align: center; }
 .receptlijst li.op-menu .titel { color: var(--zacht); }
 .receptlijst .open { color: var(--zacht); text-decoration: none; font-size: 22px; padding: 8px 4px 8px 12px; }
 .recepten { padding-bottom: 40px; }
+
+.pakop { position: relative; z-index: 1; align-self: flex-start; display: inline-flex; align-items: center; gap: 6px; padding: 5px 11px; border-radius: 99px; border: 1px dashed rgba(185, 168, 255, 0.45); background: rgba(185, 168, 255, 0.06); color: var(--accent); font-size: 12.5px; }
+.pakop::before { content: '♻'; font-size: 12px; }

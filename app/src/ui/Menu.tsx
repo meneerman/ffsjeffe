@@ -2,6 +2,7 @@ import { useEffect, useMemo, useRef, useState } from 'react'
 import { behoeften, boodschappenRegels } from '../core/boodschappen'
 import { leegmaken, markeerGegeten, vastzetten, zaadVoor } from '../core/menu'
 import type { Menu as MenuT, Recept } from '../core/types'
+import { pakOp, type PakOp } from '../core/pakop'
 import { aantalPorties } from '../core/schalen'
 import { dagenGeleden, kandidaten, stelVoor } from '../core/voorstel'
 import { VerouderdFout } from '../data/github'
@@ -167,6 +168,8 @@ export function Menu({ data, repo, naam, herlaad, bijgewerkt, nu = () => new Dat
               verdwijnt={verdwijnt.has(g.receptId)}
               bezig={bezig}
               verwijder={() => verwijder(g.receptId)}
+              tip={vastgezet.get(g.receptId)?.gegetenOp ? null : pakOp(perId[g.receptId], g, data.verpakkingen)}
+              pasTipToe={(t: PakOp) => concept.wijzig((huidig) => huidig.map((x) => (x.receptId === g.receptId ? { ...x, eters: t.eters, avonden: t.avonden } : x)))}
               zetEters={(n: number) => zet(g.receptId, 'eters', n)}
               zetAvonden={(n: number) => zet(g.receptId, 'avonden', n)}
               wisselGegeten={() => wisselGegeten(perId[g.receptId])}
@@ -237,6 +240,7 @@ export function Menu({ data, repo, naam, herlaad, bijgewerkt, nu = () => new Dat
 
 function GerechtKaart(p: {
   recept: Recept; eters: number; avonden: number; meta: string; gegetenOp: string | null; kanGegeten: boolean; nu: Date
+  tip: PakOp | null; pasTipToe: (t: PakOp) => void
   verdwijnt: boolean; bezig: boolean; verwijder: () => void; zetEters: (n: number) => void; zetAvonden: (n: number) => void; wisselGegeten: () => void
 }) {
   const { recept: r } = p
@@ -261,6 +265,11 @@ function GerechtKaart(p: {
               </div>
               <button className="verwijder-knop" aria-label={`Verwijder ${r.titel}`} onClick={() => setVraag(true)}>×</button>
             </div>
+            {p.tip && (
+              <button className="pakop" onClick={() => p.pasTipToe(p.tip!)}>
+                Pak {p.tip.naam} op: {p.tip.porties} porties
+              </button>
+            )}
             <div className="gerecht-bediening">
               <Stapper naam="eters" icoon="👤" waarde={p.eters} wijzig={p.zetEters} klein />
               <Stapper naam="avonden" icoon="☾" waarde={p.avonden} wijzig={p.zetAvonden} klein />

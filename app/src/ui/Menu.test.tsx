@@ -313,3 +313,14 @@ test('oud menu zonder avonden valt terug op de standaard van het recept', async 
   expect(screen.getByLabelText('avonden').textContent).toBe('3')
   expect(screen.getByText(/12 porties/)).toBeTruthy()
 })
+
+test('tip om een pak op te maken: één tik zet eters/avonden, daarna weg', async () => {
+  const repo = new NepRepo()
+  const saus = recept('Romige saus', [ing('crème fraîche', 150, 'ml')], { porties: 4 }) // 4 eters: 150 van 200 ml
+  repo.menu_ = { menu: menu([gerecht('Romige saus', 4)]), sha: 's' }
+  await toon(repo, [saus])
+  const tip = screen.getByRole('button', { name: 'Pak crème fraîche op: 5 porties' })
+  await userEvent.click(tip)
+  expect(screen.getByLabelText('eters').textContent).toBe('5')
+  expect(screen.queryByRole('button', { name: /^Pak .* op:/ })).toBeNull()
+})

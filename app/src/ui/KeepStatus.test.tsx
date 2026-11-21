@@ -20,3 +20,11 @@ test('na vastzetten pollen tot de status nieuwer is', async () => {
   await act(() => vi.advanceTimersByTimeAsync(10_000))
   expect(screen.getByText('Staat in Keep ✓')).toBeTruthy()
 })
+
+test('een al eerder bijgewerkte Keep geeft geen blijvende "Staat in Keep ✓" (de regels kunnen al afgevinkt zijn)', () => {
+  const repo = new NepRepo()
+  repo.status_ = { tijd: '2026-11-21T10:00:40Z', ok: true, melding: '', weken: [] }
+  render(<KeepStatusMelding repo={repo} vastgezetOp="2026-11-21T10:00:00Z" begin={repo.status_} />)
+  expect(screen.queryByText('Staat in Keep ✓')).toBeNull()
+  expect(screen.queryByText('Keep bijwerken…')).toBeNull()
+})

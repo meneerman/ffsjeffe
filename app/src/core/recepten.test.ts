@@ -1,7 +1,7 @@
 import { expect, test } from 'vitest'
 import { leesVoorbeeld } from '../testhulp'
 import { parseHoeveelheid } from './eenheden'
-import { parseRecept, parseRegel, parseVerpakkingen } from './recepten'
+import { parseCategorieen, parseRecept, parseRegel, parseVerpakkingen } from './recepten'
 import type { Recept } from './types'
 
 const PASTA = 'Pasta met zalm en crème fraîche.md'
@@ -129,4 +129,15 @@ test('invriezen: ja/nee/true/false, standaard nee, anders een fout', () => {
   expect((recept('porties: 2\ninvriezen: true\ningredienten: []') as Recept).invriezen).toBe(true)
   expect((recept('porties: 2\ninvriezen: nee\ningredienten: []') as Recept).invriezen).toBe(false)
   expect(recept('porties: 2\ninvriezen: misschien\ningredienten: []')).toEqual({ pad: 'recepten/X.md', fout: 'invriezen moet ja of nee zijn' })
+})
+
+test('parseCategorieen leest een map van categorie naar namen, met kleine letters als sleutel', () => {
+  const md = '---\nGroente & fruit:\n  - Ui\n  - paprika\nOverig:\n  - zout\n---\nuitleg'
+  expect(parseCategorieen(md)).toEqual({ ui: 'Groente & fruit', paprika: 'Groente & fruit', zout: 'Overig' })
+})
+
+test('parseCategorieen slaat onbekende categorieën en rommel over en geeft {} bij kapotte of ontbrekende frontmatter', () => {
+  expect(parseCategorieen('---\nOnzin:\n  - ui\nZuivel & eieren:\n  - 5\n  - melk\n---\n')).toEqual({ melk: 'Zuivel & eieren' })
+  expect(parseCategorieen('---\n: [kapot\n---\n')).toEqual({})
+  expect(parseCategorieen('geen frontmatter')).toEqual({})
 })

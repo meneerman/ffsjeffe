@@ -25,6 +25,23 @@ export type Recept = {
 
 export type ReceptFout = { pad: string; fout: string }
 
+/** Supermarktafdelingen in winkelvolgorde; Overig is altijd laatst en vangt wat nergens in staat. */
+export const CATEGORIEEN = [
+  'Groente & fruit',
+  'Vlees & vis',
+  'Zuivel & eieren',
+  'Brood',
+  'Droog',
+  'Blik & pot',
+  'Kruiden & specerijen',
+  'Olie, sauzen & azijn',
+  'Diepvries',
+  'Overig',
+] as const
+export type Categorie = (typeof CATEGORIEEN)[number]
+/** Sleutel = sleutel(naam) */
+export type Categorieen = Record<string, Categorie>
+
 export type Verpakking = { hoeveelheid: number; eenheid: string }
 /** Sleutel = sleutel(naam) */
 export type Verpakkingen = Record<string, Verpakking>

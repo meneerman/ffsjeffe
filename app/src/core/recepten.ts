@@ -1,6 +1,6 @@
 import { parse } from 'yaml'
 import { EENHEDEN, parseHoeveelheid } from './eenheden'
-import { SOORTEN, type Ingredient, type Recept, type ReceptFout, type Soort, type Verpakkingen } from './types'
+import { CATEGORIEEN, SOORTEN, type Categorieen, type Ingredient, type Recept, type ReceptFout, type Soort, type Verpakkingen } from './types'
 
 export function sleutel(naam: string): string {
   return naam.trim().toLowerCase().replace(/\s+/g, ' ')
@@ -151,6 +151,24 @@ export function parseVerpakkingen(markdown: string): Verpakkingen {
     const r = parseRegel(x)
     if ('fout' in r || r.hoeveelheid === null || r.hoeveelheid <= 0) continue
     uit[sleutel(r.naam)] = { hoeveelheid: r.hoeveelheid, eenheid: r.eenheid! }
+  }
+  return uit
+}
+
+/** Frontmatter is een map van categorie naar een lijst ingrediëntnamen; wat niet klopt wordt overgeslagen. */
+export function parseCategorieen(markdown: string): Categorieen {
+  let delen
+  try {
+    delen = splits(markdown)
+  } catch {
+    return {}
+  }
+  if (!delen || !isObject(delen.data)) return {}
+  const uit: Categorieen = {}
+  for (const categorie of CATEGORIEEN) {
+    const namen = delen.data[categorie]
+    if (!Array.isArray(namen)) continue
+    for (const naam of namen) if (typeof naam === 'string' && naam.trim()) uit[sleutel(naam)] = categorie
   }
   return uit
 }

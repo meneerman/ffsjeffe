@@ -25,6 +25,12 @@ const menu = (gerechten = [gerecht(PASTA, 2)], extraVelden: Partial<MenuT> = {})
   door: 'Partner', leegmakenOp: null, laatstGegeten: {}, ...extraVelden,
 })
 
+/** Gerechten in Plannen (het concept); met `menuVelden` bestaat er ook een (leeg) menu, bijv. voor laatstGegeten. */
+function plan(repo: NepRepo, gerechten: ReturnType<typeof gerecht>[], menuVelden?: Partial<MenuT>) {
+  repo.concept_ = { concept: { gerechten, sinds: '2026-11-21T09:00:00.000Z', door: 'Partner' }, sha: 'c0' }
+  if (menuVelden) repo.menu_ = { menu: menu([], menuVelden), sha: 's' }
+}
+
 async function toon(repo: NepRepo, recepten: Recept[] = [], herlaad = vi.fn(), modus: 'plannen' | 'standaard' = 'plannen') {
   repo.recepten_ = [...repo.recepten_, ...recepten]
   const r = await repo.recepten()
@@ -39,6 +45,11 @@ async function toon(repo: NepRepo, recepten: Recept[] = [], herlaad = vi.fn(), m
   if (tab && modus === 'plannen') fireEvent.click(tab)
   return { data, herlaad }
 }
+/** Op de boodschappenlijst drukken en in het bevestigscherm bevestigen. */
+async function vastzetKnop() {
+  await userEvent.click(screen.getByRole('button', { name: /Op de boodschappenlijst/ }))
+  await userEvent.click(within(screen.getByRole('dialog', { name: 'Naar Keep sturen' })).getByRole('button', { name: 'Ja, naar Keep' }))
+}
 async function verwijderBevestigd(titel: string) {
   await userEvent.click(screen.getByRole('button', { name: `Verwijder ${titel}` }))
   await userEvent.click(within(screen.getByRole('dialog', { name: 'Weet je het zeker?' })).getByRole('button', { name: 'Verwijderen' }))
@@ -48,14 +59,15 @@ const titels = () => kaarten().map((k) => within(k).getByRole('link').textConten
 
 test('leeg menu: kop en een voorstel van 3', async () => {
   await toon(new NepRepo(), extra(3))
-  expect(screen.getByRole('heading', { level: 1 }).textContent).toBe('Wat eten we deze keer?')
+  expect(screen.getByRole('heading', { level: 1 }).textContent).toBe('ffsjeffe')
+  expect(screen.getByText('Wat eten we deze keer?')).toBeTruthy()
   expect(kaarten()).toHaveLength(3)
   expect(within(kaarten()[0]).getByText(/nog nooit/)).toBeTruthy()
 })
 
 test('x dagen geleden', async () => {
   const repo = new NepRepo()
-  repo.menu_ = { menu: menu([gerecht(PASTA)], { laatstGegeten: { [PASTA]: '2026-11-03' } }), sha: 's' }
+  plan(repo, [gerecht(PASTA)], { laatstGegeten: { [PASTA]: '2026-11-03' } })
   await toon(repo)
   expect(screen.getByText(/18 dagen geleden/)).toBeTruthy()
 })
@@ -111,7 +123,7 @@ test('geen veeglaag meer onder de kaarten', async () => {
 
 test('eters − + passen eters en boodschappen aan, minimaal 1', async () => {
   const repo = new NepRepo()
-  repo.menu_ = { menu: menu([gerecht(PASTA, 2)]), sha: 's' }
+  plan(repo, [gerecht(PASTA, 2)])
   await toon(repo)
   expect(screen.getByText('Pasta 200 g')).toBeTruthy()
   await userEvent.click(screen.getByRole('button', { name: 'Meer eters' }))
@@ -125,7 +137,7 @@ test('vastzetten schrijft het menu', async () => {
   const repo = new NepRepo()
   const { data, herlaad } = await toon(repo, extra(3))
   const getoond = titels()
-  await userEvent.click(screen.getByRole('button', { name: /Op de boodschappenlijst/ }))
+  await vastzetKnop()
   await screen.findByText(/Vastgezet door Menno/)
   const { menu: m, sha, bericht } = repo.geschreven[0]
   expect(sha).toBeNull()
@@ -153,13 +165,15 @@ test('Keep leegmaken: bevestigen, annuleren, leegmaken', async () => {
   await waitFor(() => expect(kaarten()).toHaveLength(3))
 })
 
-test('gegeten-vinkje alleen op vastgezette gerechten, heen en terug', async () => {
+test('gegeten-vinkje alleen op vastgezette gerechten (Bereiden), heen en terug', async () => {
   const repo = new NepRepo()
   repo.menu_ = { menu: menu([gerecht(PASTA)], { laatstGegeten: { [PASTA]: '2026-10-01' } }), sha: 's' }
   await toon(repo)
   await userEvent.click(screen.getByRole('button', { name: /Gerecht erbij/ }))
   await userEvent.click(within(screen.getByRole('dialog')).getByRole('button', { name: 'Erbij' }))
-  await waitFor(() => expect(kaarten()).toHaveLength(2))
+  await waitFor(() => expect(kaarten()).toHaveLength(1))
+  expect(screen.queryAllByRole('button', { name: / gegeten$/ })).toHaveLength(0) // in Plannen nog niets gegeten
+  fireEvent.click(screen.getByRole('tab', { name: 'Bereiden' }))
   expect(screen.getAllByRole('button', { name: / gegeten$/ })).toHaveLength(1)
   await userEvent.click(screen.getByRole('button', { name: `${PASTA} gegeten` }))
   await screen.findByText('✓ gegeten vandaag')
@@ -167,8 +181,6 @@ test('gegeten-vinkje alleen op vastgezette gerechten, heen en terug', async () =
   expect(w.bericht).toBe(`${PASTA} gegeten — Menno`)
   expect(w.menu.laatstGegeten[PASTA]).toBe('2026-11-21')
   expect(w.menu.gerechten[0]).toMatchObject({ gegetenOp: '2026-11-21', vorigeKeer: '2026-10-01' })
-  expect(w.menu.boodschappen).toEqual(repo.geschreven[0].menu.boodschappen)
-  expect(titels().at(-1)).toBe(PASTA) // gegeten staat onderaan
   await userEvent.click(screen.getByRole('button', { name: `${PASTA} gegeten` }))
   await waitFor(() => expect(repo.geschreven).toHaveLength(2))
   expect(repo.geschreven[1].menu.laatstGegeten[PASTA]).toBe('2026-10-01')
@@ -176,7 +188,7 @@ test('gegeten-vinkje alleen op vastgezette gerechten, heen en terug', async () =
 
 test('alles wegvegen: leeg menu met Nieuw voorstel', async () => {
   const repo = new NepRepo()
-  repo.menu_ = { menu: menu([gerecht(PASTA)]), sha: 's' }
+  plan(repo, [gerecht(PASTA)])
   await toon(repo, extra(3))
   await verwijderBevestigd(PASTA)
   await waitFor(() => expect(kaarten()).toHaveLength(0))
@@ -184,16 +196,13 @@ test('alles wegvegen: leeg menu met Nieuw voorstel', async () => {
   expect(kaarten()).toHaveLength(3)
 })
 
-test('een leeg menu vastzetten kan; daarna verschijnt vanzelf een voorstel', async () => {
+test('met niets in Plannen kun je niet vastzetten', async () => {
   const repo = new NepRepo()
-  repo.menu_ = { menu: menu([gerecht(PASTA)]), sha: 's' }
+  plan(repo, [gerecht(PASTA)])
   await toon(repo, extra(3))
   await verwijderBevestigd(PASTA)
   await waitFor(() => expect(kaarten()).toHaveLength(0))
-  await userEvent.click(screen.getByRole('button', { name: /Op de boodschappenlijst/ }))
-  await waitFor(() => expect(repo.geschreven).toHaveLength(1))
-  expect(repo.geschreven[0].menu.gerechten).toEqual([])
-  await waitFor(() => expect(kaarten()).toHaveLength(3))
+  expect((screen.getByRole('button', { name: /Op de boodschappenlijst/ }) as HTMLButtonElement).disabled).toBe(true)
 })
 
 test('concept ouder dan de vastzetting van de partner vervalt', async () => {
@@ -201,16 +210,16 @@ test('concept ouder dan de vastzetting van de partner vervalt', async () => {
   const repo = new NepRepo()
   repo.menu_ = { menu: menu([gerecht(WRAPS)]), sha: 's' }
   await toon(repo)
-  expect(titels()).toEqual([WRAPS])
+  expect(titels()).toEqual([]) // wat al vastgezet is staat in Bereiden
   expect(localStorage.getItem('ffsjeffe.concept')).toBeNull()
 })
 
 test('gerecht met verwijderd recept wordt niet getoond en niet geboodschapt', async () => {
   const repo = new NepRepo()
-  repo.menu_ = { menu: menu([gerecht('Bestaat niet'), gerecht(PASTA)]), sha: 's' }
+  plan(repo, [gerecht('Bestaat niet'), gerecht(PASTA)])
   await toon(repo)
   expect(titels()).toEqual([PASTA])
-  await userEvent.click(screen.getByRole('button', { name: /Op de boodschappenlijst/ }))
+  await vastzetKnop()
   await waitFor(() => expect(repo.geschreven).toHaveLength(1))
   expect(repo.geschreven[0].menu.gerechten.map((g) => g.receptId)).toEqual([PASTA])
 })
@@ -219,7 +228,7 @@ test('VerouderdFout toont melding en Herladen', async () => {
   const repo = new NepRepo()
   repo.zetFout = new VerouderdFout()
   const { herlaad } = await toon(repo, extra(3))
-  await userEvent.click(screen.getByRole('button', { name: /Op de boodschappenlijst/ }))
+  await vastzetKnop()
   expect(await screen.findByText('Iemand anders heeft het menu net aangepast. Herlaad en probeer opnieuw.')).toBeTruthy()
   await userEvent.click(screen.getByRole('button', { name: 'Herladen' }))
   expect(herlaad).toHaveBeenCalled()
@@ -262,7 +271,7 @@ test('Nieuw voorstel geeft andere gerechten dan net weggeveegd', async () => {
 test('batchgerecht toont porties; eters en avonden zijn los te plussen', async () => {
   const repo = new NepRepo()
   const bolo = recept('Bolognesesaus', [ing('gehakt', 750, 'g')], { porties: 12, avonden: 3 })
-  repo.menu_ = { menu: menu([gerecht('Bolognesesaus', 4, { avonden: 3 })]), sha: 's' }
+  plan(repo, [gerecht('Bolognesesaus', 4, { avonden: 3 })])
   await toon(repo, [bolo])
   expect(screen.getByText(/12 porties/)).toBeTruthy()
   expect(screen.getByLabelText('avonden').textContent).toBe('3')
@@ -274,7 +283,7 @@ test('batchgerecht toont porties; eters en avonden zijn los te plussen', async (
 
 test('avonden: minimaal 1, en één avond toont geen porties-regel', async () => {
   const repo = new NepRepo()
-  repo.menu_ = { menu: menu([gerecht(PASTA, 4, { avonden: 2 })]), sha: 's' }
+  plan(repo, [gerecht(PASTA, 4, { avonden: 2 })])
   await toon(repo)
   await userEvent.click(screen.getByRole('button', { name: 'Minder avonden' }))
   expect(screen.getByLabelText('avonden').textContent).toBe('1')
@@ -284,7 +293,7 @@ test('avonden: minimaal 1, en één avond toont geen porties-regel', async () =>
 
 test('avonden wijzigen verandert de boodschappen', async () => {
   const repo = new NepRepo()
-  repo.menu_ = { menu: menu([gerecht(PASTA, 4, { avonden: 1 })]), sha: 's' }
+  plan(repo, [gerecht(PASTA, 4, { avonden: 1 })])
   await toon(repo)
   expect(screen.getByText('Pasta 400 g')).toBeTruthy()
   await userEvent.click(screen.getByRole('button', { name: 'Meer avonden' }))
@@ -308,7 +317,7 @@ test('oud menu zonder avonden valt terug op de standaard van het recept', async 
   const repo = new NepRepo()
   const bolo = recept('Bolognesesaus', [ing('gehakt', 750, 'g')], { porties: 12, avonden: 3 })
   const oud = { receptId: 'Bolognesesaus', eters: 4, gegetenOp: null, vorigeKeer: null } as unknown as ReturnType<typeof gerecht>
-  repo.menu_ = { menu: menu([oud]), sha: 's' }
+  plan(repo, [oud])
   await toon(repo, [bolo])
   expect(screen.getByLabelText('avonden').textContent).toBe('3')
   expect(screen.getByText(/12 porties/)).toBeTruthy()
@@ -317,7 +326,7 @@ test('oud menu zonder avonden valt terug op de standaard van het recept', async 
 test('tip om een pak op te maken: één tik zet eters/avonden, daarna weg', async () => {
   const repo = new NepRepo()
   const saus = recept('Romige saus', [ing('crème fraîche', 150, 'ml')], { porties: 4 }) // 4 eters: 150 van 200 ml
-  repo.menu_ = { menu: menu([gerecht('Romige saus', 4)]), sha: 's' }
+  plan(repo, [gerecht('Romige saus', 4)])
   await toon(repo, [saus])
   const tip = screen.getByRole('button', { name: 'Pak crème fraîche op: 5 eters · 5 porties' })
   await userEvent.click(tip)
@@ -328,7 +337,7 @@ test('tip om een pak op te maken: één tik zet eters/avonden, daarna weg', asyn
 test('tip bij een batch zegt dat de avonden veranderen', async () => {
   const repo = new NepRepo()
   const bolo = recept('Bolognesesaus', [ing('crème fraîche', 150, 'ml')], { porties: 12, avonden: 3 }) // 4×3: 150 van 200 ml
-  repo.menu_ = { menu: menu([gerecht('Bolognesesaus', 4, { avonden: 3 })]), sha: 's' }
+  plan(repo, [gerecht('Bolognesesaus', 4, { avonden: 3 })])
   await toon(repo, [bolo])
   await userEvent.click(screen.getByRole('button', { name: 'Pak crème fraîche op: 4 avonden · 16 porties' }))
   expect(screen.getByLabelText('avonden').textContent).toBe('4')
@@ -350,12 +359,12 @@ test('stapel: terug-knop haalt het laatst weggeveegde gerecht terug', async () =
 
 test('instellingen staat in de kop van het menu', async () => {
   await toon(new NepRepo(), extra(3))
-  expect(within(screen.getByTestId('menu')).getByRole('link', { name: 'instellingen' }).getAttribute('href')).toBe('#/instellingen')
+  expect(within(screen.getByTestId('menu')).getByRole('link', { name: 'Instellingen' }).getAttribute('href')).toBe('#/instellingen')
 })
 
 test('invriesbaar gerecht krijgt een ❄ op de kaart', async () => {
   const repo = new NepRepo()
-  repo.menu_ = { menu: menu([gerecht('Soep', 4)]), sha: 's' }
+  plan(repo, [gerecht('Soep', 4)])
   await toon(repo, [recept('Soep', [ing('linzen', 400, 'g')], { invriezen: true })])
   expect(within(kaarten()[0]).getByText(/❄ invriesbaar/)).toBeTruthy()
 })
@@ -435,7 +444,7 @@ test('concept van voor het laatste vastzetten telt niet meer', async () => {
   repo.menu_ = { menu: menu([gerecht(PASTA, 2)]), sha: 's' }
   repo.concept_ = { concept: { gerechten: [gerecht(WRAPS, 5)], sinds: '2026-11-19T09:00:00.000Z', door: 'Partner' }, sha: 'c0' }
   await toon(repo)
-  expect(titels()).toEqual([PASTA])
+  expect(titels()).toEqual([])
 })
 
 test('het nieuwste van lokaal en gedeeld concept wint', async () => {
@@ -486,7 +495,9 @@ test('"Staat in Keep ✓" hoort bij het vastgezette menu en verdwijnt zodra je a
   repo.status_ = { tijd: '2026-11-20T10:05:00.000Z', ok: true, melding: '', weken: [] }
   await toon(repo, extra(3))
   expect(screen.getByText('Staat in Keep ✓')).toBeTruthy()
-  await userEvent.click(within(kaartDiv(0)).getByRole('button', { name: 'Meer eters' }))
+  await userEvent.click(screen.getByRole('button', { name: /Gerecht erbij/ }))
+  await userEvent.click(within(screen.getByRole('dialog')).getByRole('button', { name: 'Erbij' }))
+  await waitFor(() => expect(kaarten()).toHaveLength(1))
   expect(screen.queryByText('Staat in Keep ✓')).toBeNull()
   expect(screen.getByText(/nog niet op Keep/)).toBeTruthy()
   expect(repo.geschreven).toHaveLength(0)
@@ -503,7 +514,8 @@ const vastgezet = (): NepRepo => {
 test('vastgezet menu zonder concept opent in bereiden: kookkaarten, geen plan-knoppen', async () => {
   const repo = vastgezet()
   await toon(repo, [], vi.fn(), 'standaard')
-  expect(screen.getByRole('heading', { level: 1 }).textContent).toBe('Wat we bereiden')
+  expect(screen.getByRole('heading', { level: 1 }).textContent).toBe('ffsjeffe')
+  expect(screen.getByText('Wat we bereiden')).toBeTruthy()
   expect(titels()).toEqual([PASTA, WRAPS])
   expect(screen.getByText('Staat in Keep ✓')).toBeTruthy()
   expect(screen.queryByRole('button', { name: /Op de boodschappenlijst/ })).toBeNull()
@@ -533,14 +545,18 @@ test('bereiden toont de ingrediënten die in Keep staan, niet een nieuwe bereken
 
 test('schakelaar Plannen laat het menu bewerken; een wijziging maakt een concept, Bereiden blijft het vastgezette menu tonen', async () => {
   const repo = vastgezet()
-  await toon(repo, [], vi.fn(), 'standaard')
+  await toon(repo, extra(3), vi.fn(), 'standaard')
   await userEvent.click(screen.getByRole('tab', { name: 'Plannen' }))
-  expect(screen.getByRole('heading', { level: 1 }).textContent).toBe('Wat eten we deze keer?')
-  await userEvent.click(within(kaartDiv(0)).getByRole('button', { name: 'Meer eters' }))
+  expect(screen.getByRole('heading', { level: 1 }).textContent).toBe('ffsjeffe')
+  expect(screen.getByText('Wat eten we deze keer?')).toBeTruthy()
+  expect(kaarten()).toHaveLength(0) // het vastgezette menu staat alleen in Bereiden
+  await userEvent.click(screen.getByRole('button', { name: /Gerecht erbij/ }))
+  await userEvent.click(within(screen.getByRole('dialog')).getByRole('button', { name: 'Erbij' }))
   await screen.findByText(/Concept van Menno/)
   expect(screen.getByRole('button', { name: /Op de boodschappenlijst/ })).toBeTruthy()
   await userEvent.click(screen.getByRole('tab', { name: 'Bereiden' }))
-  expect(screen.getByRole('heading', { level: 1 }).textContent).toBe('Wat we bereiden')
+  expect(screen.getByRole('heading', { level: 1 }).textContent).toBe('ffsjeffe')
+  expect(screen.getByText('Wat we bereiden')).toBeTruthy()
   expect(within(kaarten()[0]).queryByLabelText('eters')).toBeNull()
   expect(repo.geschreven).toHaveLength(0)
 })
@@ -549,7 +565,8 @@ test('een concept (ook van de ander) opent in Plannen; zonder vastgezet menu is 
   const repo = vastgezet()
   repo.concept_ = { concept: { gerechten: [gerecht(WRAPS, 5)], sinds: '2026-11-21T09:00:00.000Z', door: 'Partner' }, sha: 'c0' }
   await toon(repo, [], vi.fn(), 'standaard')
-  expect(screen.getByRole('heading', { level: 1 }).textContent).toBe('Wat eten we deze keer?')
+  expect(screen.getByRole('heading', { level: 1 }).textContent).toBe('ffsjeffe')
+  expect(screen.getByText('Wat eten we deze keer?')).toBeTruthy()
   expect(screen.getByRole('tab', { name: 'Bereiden' })).toBeTruthy()
   cleanup()
   await toon(new NepRepo(), extra(3))
@@ -559,33 +576,31 @@ test('een concept (ook van de ander) opent in Plannen; zonder vastgezet menu is 
 test('na op de boodschappenlijst drukken ga je naar bereiden', async () => {
   const repo = new NepRepo()
   await toon(repo, extra(3))
-  await userEvent.click(screen.getByRole('button', { name: /Op de boodschappenlijst/ }))
-  await screen.findByRole('heading', { level: 1, name: 'Wat we bereiden' })
+  await vastzetKnop()
+  await screen.findByText('Wat we bereiden')
 })
 
-test('verwijderen vraagt "Weet je het zeker?" en waarschuwt als de ingrediënten al in Keep staan', async () => {
-  const repo = vastgezet()
-  await toon(repo, [], vi.fn(), 'standaard')
-  await userEvent.click(screen.getByRole('tab', { name: 'Plannen' }))
+test('verwijderen vraagt "Weet je het zeker?"; annuleren laat het gerecht staan', async () => {
+  const repo = new NepRepo()
+  plan(repo, [gerecht(PASTA), gerecht(WRAPS)])
+  await toon(repo)
   await userEvent.click(screen.getByRole('button', { name: `Verwijder ${PASTA}` }))
   const dlg = screen.getByRole('dialog', { name: 'Weet je het zeker?' })
   expect(within(dlg).getByText(new RegExp(PASTA))).toBeTruthy()
-  expect(within(dlg).getByText(/staan al in Keep/)).toBeTruthy()
   await userEvent.click(within(dlg).getByRole('button', { name: 'Annuleren' }))
   expect(screen.queryByRole('dialog', { name: 'Weet je het zeker?' })).toBeNull()
   expect(titels()).toContain(PASTA)
-  await userEvent.click(screen.getByRole('button', { name: `Verwijder ${PASTA}` }))
-  await userEvent.click(within(screen.getByRole('dialog', { name: 'Weet je het zeker?' })).getByRole('button', { name: 'Verwijderen' }))
+  await verwijderBevestigd(PASTA)
   await waitFor(() => expect(titels()).toEqual([WRAPS]))
 })
 
 test('boodschappen staan per categorie open; wat je uitvinkt gaat niet naar Keep', async () => {
   const repo = new NepRepo()
-  repo.menu_ = { menu: menu([gerecht(PASTA, 2), gerecht(WRAPS, 2)]), sha: 's' }
+  plan(repo, [gerecht(PASTA, 2), gerecht(WRAPS, 2)])
   await toon(repo)
   expect(screen.getByRole('heading', { name: 'Olie, sauzen & azijn' })).toBeTruthy()
   await userEvent.click(screen.getByRole('checkbox', { name: /^Olijfolie/ }))
-  await userEvent.click(screen.getByRole('button', { name: /Op de boodschappenlijst/ }))
+  await vastzetKnop()
   await screen.findByText(/Vastgezet door Menno/)
   const regels = repo.geschreven[0].menu.boodschappen
   expect(regels.some((r) => r.startsWith('Olijfolie'))).toBe(false)
@@ -594,19 +609,96 @@ test('boodschappen staan per categorie open; wat je uitvinkt gaat niet naar Keep
 
 test('alles uitvinken en toch vastzetten schrijft een lege lijst zonder fout', async () => {
   const repo = new NepRepo()
-  repo.menu_ = { menu: menu([gerecht(PASTA, 2)]), sha: 's' }
+  plan(repo, [gerecht(PASTA, 2)])
   await toon(repo)
   for (const vak of screen.getAllByRole('checkbox')) await userEvent.click(vak)
-  await userEvent.click(screen.getByRole('button', { name: /Op de boodschappenlijst/ }))
+  await vastzetKnop()
   await screen.findByText(/Vastgezet door Menno/)
   expect(repo.geschreven[0].menu.boodschappen).toEqual([])
 })
 
 test('na een gewijzigd aantal eters staat de nieuwe regel weer aangevinkt', async () => {
   const repo = new NepRepo()
-  repo.menu_ = { menu: menu([gerecht(PASTA, 2)]), sha: 's' }
+  plan(repo, [gerecht(PASTA, 2)])
   await toon(repo)
   await userEvent.click(screen.getByRole('checkbox', { name: 'Pasta 200 g' }))
   await userEvent.click(screen.getByRole('button', { name: 'Meer eters' }))
   expect((screen.getByRole('checkbox', { name: 'Pasta 300 g' }) as HTMLInputElement).checked).toBe(true)
+})
+
+test('geen "ffsjeffe · menu" meer boven de kop', async () => {
+  await toon(new NepRepo(), extra(3))
+  expect(screen.queryByText('ffsjeffe · menu')).toBeNull()
+})
+
+test('de schakelaar staat op volgorde Plannen, Bereiden', async () => {
+  const repo = new NepRepo()
+  repo.menu_ = { menu: menu([gerecht(PASTA, 2)]), sha: 's' }
+  await toon(repo)
+  expect(screen.getAllByRole('tab').map((t) => t.textContent)).toEqual(['Plannen', 'Bereiden'])
+})
+
+test('na vastzetten is Plannen leeg: de vastgezette gerechten staan alleen in Bereiden', async () => {
+  const repo = vastgezet()
+  await toon(repo, [], vi.fn(), 'plannen')
+  expect(kaarten()).toHaveLength(0)
+  expect(screen.queryByRole('link', { name: PASTA })).toBeNull()
+  fireEvent.click(screen.getByRole('tab', { name: 'Bereiden' }))
+  expect(screen.getByRole('link', { name: PASTA })).toBeTruthy()
+})
+
+test('nieuwe gerechten komen bij het vastgezette menu; alleen de nieuwe regels staan in het nalopen', async () => {
+  const repo = new NepRepo()
+  const perId = Object.fromEntries(repo.recepten_.map((r) => [r.id, r]))
+  const oud = [gerecht(PASTA, 2)]
+  const oudeRegels = boodschappenRegels(behoeften(oud, perId), (await repo.recepten()).verpakkingen)
+  repo.menu_ = { menu: menu(oud, { boodschappen: oudeRegels }), sha: 's' }
+  repo.concept_ = { concept: { gerechten: [gerecht(WRAPS, 2)], sinds: '2026-11-21T09:00:00.000Z', door: 'Partner' }, sha: 'c0' }
+  await toon(repo)
+  expect(kaarten()).toHaveLength(1)
+  expect(screen.queryByRole('checkbox', { name: /^Pasta/ })).toBeNull() // staat al op Keep
+  expect(screen.getByRole('checkbox', { name: /^Kipfilet/ })).toBeTruthy()
+  await vastzetKnop()
+  await screen.findByText(/Vastgezet door Menno/)
+  const m = repo.geschreven[0].menu
+  expect(m.gerechten.map((g) => g.receptId)).toEqual([PASTA, WRAPS])
+  expect(m.ronde).toBe('2026-11-20T10:00:00.000Z') // zelfde ronde, geen nieuwe
+  expect(m.boodschappen.some((r) => r.startsWith('Pasta'))).toBe(true)
+  expect(m.boodschappen.some((r) => r.startsWith('Kipfilet'))).toBe(true)
+})
+
+test('een gerecht dat al vastgezet is en opnieuw wordt gekozen, vervangt het oude (niet dubbel)', async () => {
+  const repo = new NepRepo()
+  repo.menu_ = { menu: menu([gerecht(PASTA, 2)], { boodschappen: [] }), sha: 's' }
+  repo.concept_ = { concept: { gerechten: [gerecht(PASTA, 4)], sinds: '2026-11-21T09:00:00.000Z', door: 'Partner' }, sha: 'c0' }
+  await toon(repo)
+  await vastzetKnop()
+  await screen.findByText(/Vastgezet door Menno/)
+  expect(repo.geschreven[0].menu.gerechten.map((g) => [g.receptId, g.eters])).toEqual([[PASTA, 4]])
+})
+
+test('op de boodschappenlijst vraagt eerst "Weet je het zeker?": annuleren schrijft niets', async () => {
+  const repo = new NepRepo()
+  plan(repo, [gerecht(PASTA, 2)])
+  await toon(repo)
+  await userEvent.click(screen.getByRole('button', { name: /Op de boodschappenlijst/ }))
+  const dlg = screen.getByRole('dialog', { name: 'Naar Keep sturen' })
+  expect(within(dlg).getByText('Weet je het zeker?')).toBeTruthy()
+  await userEvent.click(within(dlg).getByRole('button', { name: 'Annuleren' }))
+  expect(screen.queryByRole('dialog', { name: 'Naar Keep sturen' })).toBeNull()
+  expect(repo.geschreven).toHaveLength(0)
+})
+
+test('in het bevestigscherm kun je nog uitvinken; dat gaat niet naar Keep', async () => {
+  const repo = new NepRepo()
+  plan(repo, [gerecht(PASTA, 2), gerecht(WRAPS, 2)])
+  await toon(repo)
+  await userEvent.click(screen.getByRole('button', { name: /Op de boodschappenlijst/ }))
+  const dlg = screen.getByRole('dialog', { name: 'Naar Keep sturen' })
+  await userEvent.click(within(dlg).getByRole('checkbox', { name: /^Olijfolie/ }))
+  await userEvent.click(within(dlg).getByRole('button', { name: 'Ja, naar Keep' }))
+  await screen.findByText(/Vastgezet door Menno/)
+  const regels = repo.geschreven[0].menu.boodschappen
+  expect(regels.some((r) => r.startsWith('Olijfolie'))).toBe(false)
+  expect(regels.some((r) => r.startsWith('Pasta'))).toBe(true)
 })

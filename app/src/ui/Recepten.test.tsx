@@ -56,9 +56,9 @@ test('meerdere aanvinken en in één keer op het menu zetten', async () => {
   expect(knop().textContent).toMatch(/Op het menu \(2\)/)
   await userEvent.click(knop())
   const c = JSON.parse(localStorage.getItem('ffsjeffe.concept')!)
-  expect(c.gerechten.map((g: { receptId: string }) => g.receptId)).toEqual([PASTA, 'Bolognesesaus', 'Tiramisu'])
-  expect(c.gerechten[1]).toMatchObject({ eters: 4, avonden: 3 })
-  expect(c.gerechten[2]).toMatchObject({ eters: 4, avonden: 1 })
+  expect(c.gerechten.map((g: { receptId: string }) => g.receptId)).toEqual(['Bolognesesaus', 'Tiramisu'])
+  expect(c.gerechten[0]).toMatchObject({ eters: 4, avonden: 3 })
+  expect(c.gerechten[1]).toMatchObject({ eters: 4, avonden: 1 })
   expect(location.hash).toBe('#/')
 })
 

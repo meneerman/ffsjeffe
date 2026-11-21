@@ -87,6 +87,7 @@ export function ReceptPagina({ recept: r, data }: { recept: Recept; data: AppDat
         <Stapper naam="avonden" icoon="☾" waarde={avonden} wijzig={(n) => zet('avonden', n)} />
         {avonden > 1 && <span className="chip accent">{aantalPorties(eters, avonden)} porties</span>}
         {!isOrigineel && <button className="chip origineel" onClick={naarOrigineel} aria-label={`Origineel (${r.porties} porties)`}><span aria-hidden="true">↺</span> Origineel ({r.porties} porties)</button>}
+        {r.invriezen && <span className="chip vries">❄ Invriesbaar</span>}
         {schermAan && <span className="chip scherm-aan"><span className="puls" aria-hidden="true" />scherm blijft aan</span>}
       </div>
 

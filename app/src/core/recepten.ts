@@ -78,6 +78,9 @@ export function parseRecept(pad: string, markdown: string): Recept | ReceptFout 
   if (!isGeheel(avonden, 1)) return fout('avonden moet een geheel getal ≥ 1 zijn')
   const soort = typeof d.soort === 'string' ? d.soort.trim().toLowerCase() : d.soort === undefined || d.soort === null ? 'avondeten' : ''
   if (!(SOORTEN as readonly string[]).includes(soort)) return fout(`soort moet een van ${SOORTEN.join(', ')} zijn`)
+  const vries = d.invriezen
+  const invriezen = vries === undefined || vries === null ? false : vries === true || vries === 'ja' ? true : vries === false || vries === 'nee' ? null : undefined
+  if (invriezen === undefined) return fout('invriezen moet ja of nee zijn')
   if (!Array.isArray(d.ingredienten)) return fout('ingredienten is geen lijst')
 
   const ingredienten: Ingredient[] = []
@@ -94,6 +97,7 @@ export function parseRecept(pad: string, markdown: string): Recept | ReceptFout 
     id: titel,
     titel,
     soort: soort as Soort,
+    invriezen: invriezen === true,
     porties: d.porties,
     tijdMinuten: isGeheel(d.tijd, 0) ? d.tijd : 0,
     avonden,

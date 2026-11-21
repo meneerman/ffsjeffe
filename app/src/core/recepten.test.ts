@@ -101,3 +101,11 @@ test('soort: standaard avondeten, vaste lijst, anders een fout', () => {
   expect((recept('porties: 2\nsoort: Ontbijt\ningredienten: []') as Recept).soort).toBe('ontbijt')
   expect(recept('porties: 2\nsoort: brunch\ningredienten: []')).toEqual({ pad: 'recepten/X.md', fout: 'soort moet een van ontbijt, lunch, avondeten, voorgerecht, toetje, snack zijn' })
 })
+
+test('invriezen: ja/nee/true/false, standaard nee, anders een fout', () => {
+  expect((recept('porties: 2\ningredienten: []') as Recept).invriezen).toBe(false)
+  expect((recept('porties: 2\ninvriezen: ja\ningredienten: []') as Recept).invriezen).toBe(true)
+  expect((recept('porties: 2\ninvriezen: true\ningredienten: []') as Recept).invriezen).toBe(true)
+  expect((recept('porties: 2\ninvriezen: nee\ningredienten: []') as Recept).invriezen).toBe(false)
+  expect(recept('porties: 2\ninvriezen: misschien\ningredienten: []')).toEqual({ pad: 'recepten/X.md', fout: 'invriezen moet ja of nee zijn' })
+})

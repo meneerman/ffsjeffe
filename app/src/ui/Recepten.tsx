@@ -15,6 +15,7 @@ export function Recepten({ data }: SchermProps) {
   const concept = useConcept(data, menu)
   const opMenu = new Set(concept.gerechten.map((g) => g.receptId))
   const [filter, setFilter] = useState<Soort | 'alles'>('alles')
+  const [alleenVriezer, setAlleenVriezer] = useState(false)
   const [gekozen, setGekozen] = useState<Set<string>>(new Set())
   const standaard = data.instellingen.huishouden
   const nu = new Date()
@@ -38,7 +39,11 @@ export function Recepten({ data }: SchermProps) {
     location.hash = '#/'
   }
 
-  const zichtbaar = groepen.filter((g) => filter === 'alles' || g.soort === filter)
+  const zichtbaar = groepen
+    .filter((g) => filter === 'alles' || g.soort === filter)
+    .map((g) => ({ ...g, recepten: g.recepten.filter((r) => !alleenVriezer || r.invriezen) }))
+    .filter((g) => g.recepten.length > 0)
+  const aantalVriezer = data.recepten.filter((r) => r.invriezen).length
 
   return (
     <div className="recepten">
@@ -54,7 +59,14 @@ export function Recepten({ data }: SchermProps) {
             {SOORT_NAAM[g.soort]} ({g.recepten.length})
           </button>
         ))}
+        {aantalVriezer > 0 && (
+          <button className={`chip vries${alleenVriezer ? ' accent' : ''}`} aria-pressed={alleenVriezer} onClick={() => setAlleenVriezer((v) => !v)}>
+            ❄ Invriesbaar ({aantalVriezer})
+          </button>
+        )}
       </div>
+
+      {data.recepten.length > 0 && zichtbaar.length === 0 && <p className="zacht">Geen recepten met deze filters.</p>}
 
       {data.recepten.length === 0 && <p className="kaart">Nog geen recepten. Voeg ze toe in Obsidian in de map <code>recepten</code>.</p>}
 

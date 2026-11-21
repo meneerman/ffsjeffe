@@ -203,3 +203,6 @@ footer { margin-top: 40px; text-align: center; }
 .stapper-getal { display: inline-block; animation: tik 0.35s var(--veer); }
 @keyframes tik { 0% { transform: scale(1.5); color: var(--accent); } 100% { transform: scale(1); } }
 .chip.origineel { cursor: pointer; color: var(--tekst); }
+
+.chip.vries { color: #9fd3ff; border-color: rgba(159, 211, 255, 0.3); }
+.chip.vries.accent { background: rgba(159, 211, 255, 0.12); }

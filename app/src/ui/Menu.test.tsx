@@ -352,3 +352,10 @@ test('instellingen staat in de kop van het menu', async () => {
   await toon(new NepRepo(), extra(3))
   expect(within(screen.getByTestId('menu')).getByRole('link', { name: 'instellingen' }).getAttribute('href')).toBe('#/instellingen')
 })
+
+test('invriesbaar gerecht krijgt een ❄ op de kaart', async () => {
+  const repo = new NepRepo()
+  repo.menu_ = { menu: menu([gerecht('Soep', 4)]), sha: 's' }
+  await toon(repo, [recept('Soep', [ing('linzen', 400, 'g')], { invriezen: true })])
+  expect(within(kaarten()[0]).getByText(/❄ invriesbaar/)).toBeTruthy()
+})

@@ -8,6 +8,8 @@ export type Recept = {
   id: string
   titel: string
   soort: Soort
+  /** goed in te vriezen */
+  invriezen: boolean
   porties: number
   tijdMinuten: number
   /** standaard aantal avonden waarvoor je dit gerecht kookt (batch: meer dan 1); per gerecht aan te passen */

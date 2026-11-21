@@ -177,3 +177,14 @@ test('origineel bij een gewoon recept van 2 porties: 2 eters, 1 avond', async ()
   expect(screen.getByLabelText('eters').textContent).toBe('4')
   expect(screen.queryByRole('button', { name: /Origineel/ })).toBeNull()
 })
+
+test('invriesbaar recept toont een chip, ander niet', async () => {
+  const repo = new NepRepo()
+  repo.recepten_.push(recept('Soep', [ing('linzen', 400, 'g')], { invriezen: true }))
+  const d: AppData = { ...(await repo.recepten()), menu: null, instellingen: { huishouden: 4 }, keepStatus: null }
+  render(<ReceptPagina recept={recept2(d, 'Soep')} data={d} />)
+  expect(screen.getByText('❄ Invriesbaar')).toBeTruthy()
+  cleanup()
+  render(<ReceptPagina recept={recept2(d, PASTA)} data={d} />)
+  expect(screen.queryByText('❄ Invriesbaar')).toBeNull()
+})

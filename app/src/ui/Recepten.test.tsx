@@ -14,7 +14,7 @@ afterEach(() => { cleanup(); location.hash = '' })
 const EXTRA: Recept[] = [
   recept('Tiramisu', [ing('mascarpone', 250, 'g')], { soort: 'toetje' }),
   recept('Pannenkoeken', [ing('bloem', 250, 'g')], { soort: 'ontbijt' }),
-  recept('Bolognesesaus', [ing('gehakt', 750, 'g')], { porties: 12, avonden: 3 }),
+  recept('Bolognesesaus', [ing('gehakt', 750, 'g')], { porties: 12, avonden: 3, invriezen: true }),
 ]
 const MENU: Menu = { versie: 2, ronde: 'R', gerechten: [gerecht(PASTA, 4)], boodschappen: [], vastgezetOp: '2026-11-20T10:00:00.000Z', door: 'P', leegmakenOp: null, laatstGegeten: {} }
 
@@ -75,4 +75,16 @@ test('app: knop Alle recepten op het menu opent de lijst', async () => {
   render(<App maakRepo={() => new NepRepo()} />)
   await userEvent.click(await screen.findByRole('link', { name: /Alle recepten/ }))
   expect((await screen.findByRole('heading', { level: 1 })).textContent).toMatch(/Alle recepten/)
+})
+
+test('filter invriesbaar, te combineren met soort, en ❄ bij het recept', async () => {
+  await toon()
+  expect(within(vinkje('Bolognesesaus').closest('li')!).getByText(/❄/)).toBeTruthy()
+  await userEvent.click(screen.getByRole('button', { name: '❄ Invriesbaar (1)' }))
+  expect(screen.getAllByRole('checkbox').map((c) => c.getAttribute('aria-label'))).toEqual(['Bolognesesaus'])
+  await userEvent.click(screen.getByRole('button', { name: 'Toetje (1)' }))
+  expect(screen.queryAllByRole('checkbox')).toHaveLength(0)
+  expect(screen.getByText('Geen recepten met deze filters.')).toBeTruthy()
+  await userEvent.click(screen.getByRole('button', { name: '❄ Invriesbaar (1)' }))
+  expect(screen.getAllByRole('checkbox')).toHaveLength(1)
 })

@@ -215,3 +215,10 @@ footer { margin-top: 40px; text-align: center; }
 
 .concept-status { margin-top: -2px; }
 .concept-status .bewaard { color: var(--accent, #a78bfa); }
+
+/* Bereiden | Plannen */
+.modus { display: flex; gap: 4px; padding: 4px; margin: 4px 0 14px; border-radius: 99px; background: rgba(255, 255, 255, 0.06); width: max-content; }
+.modus button { border: 0; background: none; color: var(--zacht); padding: 7px 16px; border-radius: 99px; font-size: 13.5px; font-weight: 500; }
+.modus button.aan { background: var(--tekst); color: var(--bg); }
+.voortgang { margin: 0 0 10px; }
+.gerecht.bereid .gerecht-bediening { justify-content: flex-end; }

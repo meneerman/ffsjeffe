@@ -90,6 +90,7 @@ test('gegeten blijft staan na recept openen en terug, en vastzetten daarna geeft
   location.hash = '#/'
   window.dispatchEvent(new HashChangeEvent('hashchange'))
   expect(await screen.findByText(/✓ gegeten/)).toBeTruthy()
+  await userEvent.click(screen.getByRole('tab', { name: 'Plannen' })) // het vastgezette menu opent in Bereiden
   await userEvent.click(screen.getByRole('button', { name: /Op de boodschappenlijst/ }))
   await waitFor(() => expect(repo.geschreven).toHaveLength(2))
   expect(screen.queryByText(/Iemand anders/)).toBeNull()

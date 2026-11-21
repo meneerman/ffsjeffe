@@ -52,3 +52,13 @@ test('zonder verpakking: afgeronde hoeveelheid, stuks zonder woord, vaste eenhei
     { naam: 'ui', hoeveelheid: 1.5, eenheid: 'stuk' },
     { naam: 'knoflook', hoeveelheid: 2, eenheid: 'teen' },
   ], {})).toEqual(['Knoflook 2 teen', 'Pasta 234 g', 'Ui 2']))
+
+test('"naar smaak" en een snufje gaan op in een echte hoeveelheid van hetzelfde ingrediënt', () => {
+  const a = recept('a', [ing('olijfolie'), ing('zout'), ing('zout', 1, 'snuf'), ing('honing')])
+  const b = recept('b', [ing('olijfolie', 30, 'ml'), ing('zout', 3, 'g')])
+  const c = recept('c', [ing('olijfolie', 15, 'ml'), ing('honing')])
+  const regels = (ids: string[]) => boodschappenRegels(behoeften(ids.map((id) => gerecht(id, 4)), { a, b, c }), {})
+  expect(regels(['a', 'b', 'c'])).toEqual(['Honing', 'Olijfolie 45 ml', 'Zout 3 g'])
+  expect(regels(['a'])).toEqual(['Honing', 'Olijfolie', 'Zout 1 snuf']) // alleen snuf + naar smaak: één regel
+  expect(regels(['a', 'c'])).toEqual(['Honing', 'Olijfolie 15 ml', 'Zout 1 snuf'])
+})

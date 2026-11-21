@@ -29,7 +29,22 @@ export function behoeften(gerechten: Gerecht[], recepten: Record<string, Recept>
       else totaal.set(k, { naam, hoeveelheid: zuiver(n.hoeveelheid), eenheid: n.eenheid })
     }
   }
-  return [...totaal.values()]
+  return ruimOp([...totaal.values()])
+}
+
+/**
+ * Per ingrediënt één regel waar het kan: "naar smaak" (geen hoeveelheid) en een snufje gaan op in een echte
+ * hoeveelheid van hetzelfde ingrediënt; een snufje blijft over naast "naar smaak". Verschillende basiseenheden
+ * (bijv. stuk en g) laten zich niet omrekenen en blijven apart.
+ */
+function ruimOp(lijst: Behoefte[]): Behoefte[] {
+  const echt = new Set(lijst.filter((b) => b.hoeveelheid !== null && b.eenheid !== 'snuf').map((b) => b.naam))
+  const snuf = new Set(lijst.filter((b) => b.eenheid === 'snuf').map((b) => b.naam))
+  return lijst.filter((b) => {
+    if (b.hoeveelheid === null) return !echt.has(b.naam) && !snuf.has(b.naam)
+    if (b.eenheid === 'snuf') return !echt.has(b.naam)
+    return true
+  })
 }
 
 /** Aantal verpakkingen dat nodig is, of null als er geen passende verpakking is. */

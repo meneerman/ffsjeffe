@@ -113,7 +113,6 @@ test('eters − + passen eters en boodschappen aan, minimaal 1', async () => {
   const repo = new NepRepo()
   repo.menu_ = { menu: menu([gerecht(PASTA, 2)]), sha: 's' }
   await toon(repo)
-  await userEvent.click(screen.getByRole('button', { name: /Boodschappen/ }))
   expect(screen.getByText('Pasta 200 g')).toBeTruthy()
   await userEvent.click(screen.getByRole('button', { name: 'Meer eters' }))
   expect(screen.getByLabelText('eters').textContent).toBe('3')
@@ -287,7 +286,6 @@ test('avonden wijzigen verandert de boodschappen', async () => {
   const repo = new NepRepo()
   repo.menu_ = { menu: menu([gerecht(PASTA, 4, { avonden: 1 })]), sha: 's' }
   await toon(repo)
-  await userEvent.click(screen.getByRole('button', { name: /Boodschappen/ }))
   expect(screen.getByText('Pasta 400 g')).toBeTruthy()
   await userEvent.click(screen.getByRole('button', { name: 'Meer avonden' }))
   expect(screen.getByText('Pasta 800 g')).toBeTruthy()
@@ -579,4 +577,36 @@ test('verwijderen vraagt "Weet je het zeker?" en waarschuwt als de ingrediënten
   await userEvent.click(screen.getByRole('button', { name: `Verwijder ${PASTA}` }))
   await userEvent.click(within(screen.getByRole('dialog', { name: 'Weet je het zeker?' })).getByRole('button', { name: 'Verwijderen' }))
   await waitFor(() => expect(titels()).toEqual([WRAPS]))
+})
+
+test('boodschappen staan per categorie open; wat je uitvinkt gaat niet naar Keep', async () => {
+  const repo = new NepRepo()
+  repo.menu_ = { menu: menu([gerecht(PASTA, 2), gerecht(WRAPS, 2)]), sha: 's' }
+  await toon(repo)
+  expect(screen.getByRole('heading', { name: 'Olie, sauzen & azijn' })).toBeTruthy()
+  await userEvent.click(screen.getByRole('checkbox', { name: /^Olijfolie/ }))
+  await userEvent.click(screen.getByRole('button', { name: /Op de boodschappenlijst/ }))
+  await screen.findByText(/Vastgezet door Menno/)
+  const regels = repo.geschreven[0].menu.boodschappen
+  expect(regels.some((r) => r.startsWith('Olijfolie'))).toBe(false)
+  expect(regels.some((r) => r.startsWith('Pasta'))).toBe(true)
+})
+
+test('alles uitvinken en toch vastzetten schrijft een lege lijst zonder fout', async () => {
+  const repo = new NepRepo()
+  repo.menu_ = { menu: menu([gerecht(PASTA, 2)]), sha: 's' }
+  await toon(repo)
+  for (const vak of screen.getAllByRole('checkbox')) await userEvent.click(vak)
+  await userEvent.click(screen.getByRole('button', { name: /Op de boodschappenlijst/ }))
+  await screen.findByText(/Vastgezet door Menno/)
+  expect(repo.geschreven[0].menu.boodschappen).toEqual([])
+})
+
+test('na een gewijzigd aantal eters staat de nieuwe regel weer aangevinkt', async () => {
+  const repo = new NepRepo()
+  repo.menu_ = { menu: menu([gerecht(PASTA, 2)]), sha: 's' }
+  await toon(repo)
+  await userEvent.click(screen.getByRole('checkbox', { name: 'Pasta 200 g' }))
+  await userEvent.click(screen.getByRole('button', { name: 'Meer eters' }))
+  expect((screen.getByRole('checkbox', { name: 'Pasta 300 g' }) as HTMLInputElement).checked).toBe(true)
 })

@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
-import { behoeften, boodschappenRegels } from '../core/boodschappen'
+import { behoeften, boodschappenItems } from '../core/boodschappen'
 import { leegmaken, markeerGegeten, vastzetten, zaadVoor } from '../core/menu'
 import type { Menu as MenuT, Recept } from '../core/types'
 import { pakOp, type PakOp } from '../core/pakop'
@@ -9,6 +9,7 @@ import { VerouderdFout } from '../data/github'
 import type { SchermProps } from './App'
 import { Bereiden, geledenTekst } from './Bereiden'
 import { Boodschappen } from './Boodschappen'
+import { NaLopen } from './NaLopen'
 import { KeepStatusMelding } from './KeepStatus'
 import { Toevoegen } from './Toevoegen'
 import { Stapper } from './Stapper'
@@ -40,7 +41,15 @@ export function Menu({ data, repo, naam, herlaad, bijgewerkt, nu = () => new Dat
   const perId = useMemo(() => Object.fromEntries(data.recepten.map((r) => [r.id, r])), [data.recepten])
   const laatstGegeten = menu?.laatstGegeten ?? {}
   const vastgezet = useMemo(() => new Map((menu?.gerechten ?? []).map((g) => [g.receptId, g])), [menu])
-  const regels = boodschappenRegels(behoeften(gerechten, perId), data.verpakkingen)
+  const items = boodschappenItems(behoeften(gerechten, perId), data.verpakkingen)
+  // wat je uitvinkt gaat deze ronde niet naar Keep; alleen op dit toestel, tot het vastzetten
+  const [uit, setUit] = useState<Set<string>>(new Set())
+  const wisselRegel = (regel: string) => setUit((u) => {
+    const n = new Set(u)
+    if (!n.delete(regel)) n.add(regel)
+    return n
+  })
+  const regels = items.filter((i) => !uit.has(i.regel)).map((i) => i.regel)
   const standaard = data.instellingen.huishouden
 
   const [toevoegen, setToevoegen] = useState(false)
@@ -70,6 +79,7 @@ export function Menu({ data, repo, naam, herlaad, bijgewerkt, nu = () => new Dat
     const m = vastzetten(menu, gerechten, regels, naam, nu())
     if (await schrijf(m, `Menu vastgezet door ${naam}`)) {
       setModus('bereiden')
+      setUit(new Set())
       concept.wis()
       herlaad()
     }
@@ -245,7 +255,7 @@ export function Menu({ data, repo, naam, herlaad, bijgewerkt, nu = () => new Dat
         </div>
       )}
 
-      {bereiden && menu ? <Boodschappen titel="In huis (uit Keep)" regels={menu.boodschappen} /> : <Boodschappen regels={regels} />}
+      {bereiden && menu ? <Boodschappen titel="In huis (uit Keep)" regels={menu.boodschappen} /> : <NaLopen items={items} categorieen={data.categorieen} uit={uit} onWissel={wisselRegel} />}
 
       {fout && (
         <div className="kaart foutblok">

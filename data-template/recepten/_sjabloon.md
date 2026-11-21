@@ -1,7 +1,7 @@
 ---
-porties: 4
+porties: 4          # wat de hoeveelheden hieronder maken, zoals de bron het zegt
 tijd: 30
-avonden: 1
+# avonden: 3        # alleen bij een batch die je helemaal kookt: 4 eters × avonden = porties
 bron:
 ingredienten:
   - 400 g voorbeeld

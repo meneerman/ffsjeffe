@@ -1,5 +1,5 @@
-import { parseRecept, parseVerpakkingen } from '../core/recepten'
-import type { Concept, Instellingen, Menu, Recept, ReceptFout, Verpakkingen } from '../core/types'
+import { parseCategorieen, parseRecept, parseVerpakkingen } from '../core/recepten'
+import type { Categorieen, Concept, Instellingen, Menu, Recept, ReceptFout, Verpakkingen } from '../core/types'
 
 export type Verbinding = { owner: string; repo: string; token: string }
 export type KeepStatus = { tijd: string; ok: boolean; melding: string; weken: string[] }
@@ -65,11 +65,12 @@ export class DataRepo {
     return { inhoud: vanBase64(data.content), sha: data.sha }
   }
 
-  async recepten(): Promise<{ recepten: Recept[]; fouten: ReceptFout[]; verpakkingen: Verpakkingen }> {
+  async recepten(): Promise<{ recepten: Recept[]; fouten: ReceptFout[]; verpakkingen: Verpakkingen; categorieen: Categorieen }> {
     const md = (await this.paden()).filter((p) => p.startsWith('recepten/') && p.endsWith('.md'))
     const isExtra = (p: string) => p.split('/').pop()!.startsWith('_')
-    const [verpakkingsBestand, ...bestanden] = await Promise.all([
+    const [verpakkingsBestand, categorieenBestand, ...bestanden] = await Promise.all([
       md.includes('recepten/_verpakkingen.md') ? this.bestand('recepten/_verpakkingen.md') : Promise.resolve(null),
+      md.includes('recepten/_categorieen.md') ? this.bestand('recepten/_categorieen.md') : Promise.resolve(null),
       ...md.filter((p) => !isExtra(p)).map(async (p) => ({ pad: p, b: await this.bestand(p) })),
     ])
     const recepten: Recept[] = []
@@ -80,7 +81,9 @@ export class DataRepo {
       if ('fout' in r) fouten.push(r)
       else recepten.push(r)
     }
-    return { recepten, fouten, verpakkingen: verpakkingsBestand ? parseVerpakkingen(verpakkingsBestand.inhoud) : {} }
+    return { recepten, fouten, verpakkingen: verpakkingsBestand ? parseVerpakkingen(verpakkingsBestand.inhoud) : {},
+      categorieen: categorieenBestand ? parseCategorieen(categorieenBestand.inhoud) : {},
+    }
   }
 
   /** sha van een bestaande maar onbruikbare menu.json, zodat vastzetten hem kan overschrijven. */

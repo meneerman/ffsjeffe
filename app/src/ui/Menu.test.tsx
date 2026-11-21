@@ -48,7 +48,8 @@ const titels = () => kaarten().map((k) => within(k).getByRole('link').textConten
 
 test('leeg menu: kop en een voorstel van 3', async () => {
   await toon(new NepRepo(), extra(3))
-  expect(screen.getByRole('heading', { level: 1 }).textContent).toBe('Wat eten we deze keer?')
+  expect(screen.getByRole('heading', { level: 1 }).textContent).toBe('ffsjeffe')
+  expect(screen.getByText('Wat eten we deze keer?')).toBeTruthy()
   expect(kaarten()).toHaveLength(3)
   expect(within(kaarten()[0]).getByText(/nog nooit/)).toBeTruthy()
 })
@@ -350,7 +351,7 @@ test('stapel: terug-knop haalt het laatst weggeveegde gerecht terug', async () =
 
 test('instellingen staat in de kop van het menu', async () => {
   await toon(new NepRepo(), extra(3))
-  expect(within(screen.getByTestId('menu')).getByRole('link', { name: 'instellingen' }).getAttribute('href')).toBe('#/instellingen')
+  expect(within(screen.getByTestId('menu')).getByRole('link', { name: 'Instellingen' }).getAttribute('href')).toBe('#/instellingen')
 })
 
 test('invriesbaar gerecht krijgt een ❄ op de kaart', async () => {
@@ -503,7 +504,8 @@ const vastgezet = (): NepRepo => {
 test('vastgezet menu zonder concept opent in bereiden: kookkaarten, geen plan-knoppen', async () => {
   const repo = vastgezet()
   await toon(repo, [], vi.fn(), 'standaard')
-  expect(screen.getByRole('heading', { level: 1 }).textContent).toBe('Wat we bereiden')
+  expect(screen.getByRole('heading', { level: 1 }).textContent).toBe('ffsjeffe')
+  expect(screen.getByText('Wat we bereiden')).toBeTruthy()
   expect(titels()).toEqual([PASTA, WRAPS])
   expect(screen.getByText('Staat in Keep ✓')).toBeTruthy()
   expect(screen.queryByRole('button', { name: /Op de boodschappenlijst/ })).toBeNull()
@@ -535,12 +537,14 @@ test('schakelaar Plannen laat het menu bewerken; een wijziging maakt een concept
   const repo = vastgezet()
   await toon(repo, [], vi.fn(), 'standaard')
   await userEvent.click(screen.getByRole('tab', { name: 'Plannen' }))
-  expect(screen.getByRole('heading', { level: 1 }).textContent).toBe('Wat eten we deze keer?')
+  expect(screen.getByRole('heading', { level: 1 }).textContent).toBe('ffsjeffe')
+  expect(screen.getByText('Wat eten we deze keer?')).toBeTruthy()
   await userEvent.click(within(kaartDiv(0)).getByRole('button', { name: 'Meer eters' }))
   await screen.findByText(/Concept van Menno/)
   expect(screen.getByRole('button', { name: /Op de boodschappenlijst/ })).toBeTruthy()
   await userEvent.click(screen.getByRole('tab', { name: 'Bereiden' }))
-  expect(screen.getByRole('heading', { level: 1 }).textContent).toBe('Wat we bereiden')
+  expect(screen.getByRole('heading', { level: 1 }).textContent).toBe('ffsjeffe')
+  expect(screen.getByText('Wat we bereiden')).toBeTruthy()
   expect(within(kaarten()[0]).queryByLabelText('eters')).toBeNull()
   expect(repo.geschreven).toHaveLength(0)
 })
@@ -549,7 +553,8 @@ test('een concept (ook van de ander) opent in Plannen; zonder vastgezet menu is 
   const repo = vastgezet()
   repo.concept_ = { concept: { gerechten: [gerecht(WRAPS, 5)], sinds: '2026-11-21T09:00:00.000Z', door: 'Partner' }, sha: 'c0' }
   await toon(repo, [], vi.fn(), 'standaard')
-  expect(screen.getByRole('heading', { level: 1 }).textContent).toBe('Wat eten we deze keer?')
+  expect(screen.getByRole('heading', { level: 1 }).textContent).toBe('ffsjeffe')
+  expect(screen.getByText('Wat eten we deze keer?')).toBeTruthy()
   expect(screen.getByRole('tab', { name: 'Bereiden' })).toBeTruthy()
   cleanup()
   await toon(new NepRepo(), extra(3))
@@ -560,7 +565,7 @@ test('na op de boodschappenlijst drukken ga je naar bereiden', async () => {
   const repo = new NepRepo()
   await toon(repo, extra(3))
   await userEvent.click(screen.getByRole('button', { name: /Op de boodschappenlijst/ }))
-  await screen.findByRole('heading', { level: 1, name: 'Wat we bereiden' })
+  await screen.findByText('Wat we bereiden')
 })
 
 test('verwijderen vraagt "Weet je het zeker?" en waarschuwt als de ingrediënten al in Keep staan', async () => {
@@ -609,4 +614,9 @@ test('na een gewijzigd aantal eters staat de nieuwe regel weer aangevinkt', asyn
   await userEvent.click(screen.getByRole('checkbox', { name: 'Pasta 200 g' }))
   await userEvent.click(screen.getByRole('button', { name: 'Meer eters' }))
   expect((screen.getByRole('checkbox', { name: 'Pasta 300 g' }) as HTMLInputElement).checked).toBe(true)
+})
+
+test('geen "ffsjeffe · menu" meer boven de kop', async () => {
+  await toon(new NepRepo(), extra(3))
+  expect(screen.queryByText('ffsjeffe · menu')).toBeNull()
 })

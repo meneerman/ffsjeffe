@@ -1,4 +1,5 @@
 ---
+soort: avondeten    # avondeten, voorgerecht, lunch, ontbijt, toetje of snack
 porties: 4          # wat de hoeveelheden hieronder maken, zoals de bron het zegt
 tijd: 30
 # avonden: 3        # alleen bij een batchgerecht: standaard aantal avonden (4 eters × avonden ≈ porties); in de app aan te passen

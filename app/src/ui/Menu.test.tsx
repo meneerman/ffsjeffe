@@ -620,3 +620,10 @@ test('geen "ffsjeffe · menu" meer boven de kop', async () => {
   await toon(new NepRepo(), extra(3))
   expect(screen.queryByText('ffsjeffe · menu')).toBeNull()
 })
+
+test('de schakelaar staat op volgorde Plannen, Bereiden', async () => {
+  const repo = new NepRepo()
+  repo.menu_ = { menu: menu([gerecht(PASTA, 2)]), sha: 's' }
+  await toon(repo)
+  expect(screen.getAllByRole('tab').map((t) => t.textContent)).toEqual(['Plannen', 'Bereiden'])
+})

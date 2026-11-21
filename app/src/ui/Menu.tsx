@@ -187,8 +187,8 @@ export function Menu({ data, repo, naam, herlaad, bijgewerkt, nu = () => new Dat
       <p className="kop-sub">{bereiden ? 'Wat we bereiden' : 'Wat eten we deze keer?'}</p>
       {kanBereiden && (
         <div className="modus" role="tablist" aria-label="Modus">
-          <button role="tab" aria-selected={bereiden} className={bereiden ? 'aan' : ''} onClick={() => setModus('bereiden')}>Bereiden</button>
           <button role="tab" aria-selected={!bereiden} className={!bereiden ? 'aan' : ''} onClick={() => setModus('plannen')}>Plannen</button>
+          <button role="tab" aria-selected={bereiden} className={bereiden ? 'aan' : ''} onClick={() => setModus('bereiden')}>Bereiden</button>
         </div>
       )}
 

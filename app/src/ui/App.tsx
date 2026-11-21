@@ -85,9 +85,6 @@ export default function App({ maakRepo = (v: Verbinding) => new DataRepo(v), Sch
           <Scherm data={data.data} repo={repo!} naam={verbinding.naam} herlaad={data.herlaad} bijgewerkt={data.bijgewerkt} hash={hash} />
         </div>
       )}
-      <footer>
-        <a className="link-zacht" href="#/instellingen">instellingen</a>
-      </footer>
     </main>
   )
 }

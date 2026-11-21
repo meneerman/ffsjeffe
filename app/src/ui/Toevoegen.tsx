@@ -82,12 +82,11 @@ export function Toevoegen({ opties, kies, sluit, meta }: { opties: Recept[]; kie
           )}
         </div>
 
-        {boven && (
-          <div className="deck-knoppen">
-            <button className="rond nee" aria-label="Nee" onClick={() => vlieg('nee')}>✕</button>
-            <button className="rond erbij" aria-label="Erbij" onClick={() => vlieg('erbij')}>✓</button>
-          </div>
-        )}
+        <div className="deck-knoppen">
+          <button className="rond rond-terug" aria-label="Terug" onClick={() => setI((n) => Math.max(0, n - 1))} disabled={i === 0 || !!vliegt}>↺</button>
+          <button className="rond rond-nee" aria-label="Nee" onClick={() => vlieg('nee')} disabled={!boven}>✕</button>
+          <button className="rond rond-ja" aria-label="Erbij" onClick={() => vlieg('erbij')} disabled={!boven}>✓</button>
+        </div>
       </div>
     </div>
   )

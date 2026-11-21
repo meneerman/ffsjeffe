@@ -46,3 +46,8 @@ test('kookvriendelijk afronden per soort eenheid', () => {
   expect(toonIngredient(ing('zout', 3, 'g'), 0.75)).toBe('2,3 g zout')
   expect(schaalStap('Pers {1 teen} knoflook.', 0.75)).toBe('Pers 1 teen knoflook.')
 })
+
+test('geen punt bij duizendtallen', () => {
+  expect(toonIngredient(ing('gehakt', 750, 'g'), 4 / 3)).toBe('1000 g gehakt')
+  expect(toonHoeveelheid(1500)).toBe('1500')
+})

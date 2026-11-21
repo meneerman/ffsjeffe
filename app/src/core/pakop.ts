@@ -33,10 +33,14 @@ export function pakOp(r: Recept, g: Gerecht, verpakkingen: Verpakkingen): PakOp 
 
   const nu = g.eters * g.avonden
   if (rest(nu * hoofd.perPortie, hoofd.pak) <= TIP_VANAF) return null
+  const kandidaten: number[] = []
   for (let p = nu + 1; p <= nu + Math.max(2, Math.floor(nu / 2)); p++) {
-    if (rest(p * hoofd.perPortie, hoofd.pak) > BIJNA_OP) continue
-    if (p % g.eters === 0) return { naam: hoofd.naam, porties: p, eters: g.eters, avonden: p / g.eters }
-    if (p % g.avonden === 0) return { naam: hoofd.naam, porties: p, eters: p / g.avonden, avonden: g.avonden }
+    if (rest(p * hoofd.perPortie, hoofd.pak) <= BIJNA_OP) kandidaten.push(p)
   }
+  // liefst dezelfde eters en een avond erbij; anders meer eters bij dezelfde avonden
+  const metAvonden = kandidaten.find((p) => p % g.eters === 0)
+  if (metAvonden) return { naam: hoofd.naam, porties: metAvonden, eters: g.eters, avonden: metAvonden / g.eters }
+  const metEters = kandidaten.find((p) => p % g.avonden === 0)
+  if (metEters) return { naam: hoofd.naam, porties: metEters, eters: metEters / g.avonden, avonden: g.avonden }
   return null
 }

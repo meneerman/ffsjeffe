@@ -133,10 +133,12 @@ footer { margin-top: 40px; text-align: center; }
 .stempel.erbij { left: 20px; color: var(--accent); transform: rotate(-12deg); }
 .stempel.nee { right: 20px; color: var(--weg); transform: rotate(12deg); }
 .deck-knoppen { display: flex; justify-content: center; gap: 28px; margin-top: 8px; }
-.rond { width: 64px; height: 64px; border-radius: 50%; border: 1px solid var(--rand); background: var(--vlak-sterk); font-size: 24px; transition: transform 0.15s var(--veer); }
+.deck-knoppen { align-items: center; }
+.rond { display: grid; place-items: center; width: 64px; height: 64px; padding: 0; margin: 0; border-radius: 50%; border: 1px solid var(--rand); background: var(--vlak-sterk); font-size: 24px; line-height: 1; transition: transform 0.15s var(--veer); }
 .rond:active { transform: scale(0.9); }
-.rond.nee { color: var(--weg); }
-.rond.erbij { background: var(--accent); color: var(--bg); border-color: var(--accent); }
+.rond-terug { width: 48px; height: 48px; font-size: 20px; color: #f0c36b; }
+.rond-nee { color: var(--weg); }
+.rond-ja { background: var(--accent); color: var(--bg); border-color: var(--accent); }
 .deck-leeg { padding: 24px 0; text-align: center; }
 
 /* Kookpagina */
@@ -196,3 +198,8 @@ footer { margin-top: 40px; text-align: center; }
 
 .pakop { position: relative; z-index: 1; align-self: flex-start; display: inline-flex; align-items: center; gap: 6px; padding: 5px 11px; border-radius: 99px; border: 1px dashed rgba(185, 168, 255, 0.45); background: rgba(185, 168, 255, 0.06); color: var(--accent); font-size: 12.5px; }
 .pakop::before { content: '♻'; font-size: 12px; }
+
+.menu-kop { display: flex; justify-content: space-between; align-items: baseline; }
+.stapper-getal { display: inline-block; animation: tik 0.35s var(--veer); }
+@keyframes tik { 0% { transform: scale(1.5); color: var(--accent); } 100% { transform: scale(1); } }
+.chip.origineel { cursor: pointer; color: var(--tekst); }

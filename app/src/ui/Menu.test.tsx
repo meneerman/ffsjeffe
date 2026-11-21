@@ -319,8 +319,36 @@ test('tip om een pak op te maken: één tik zet eters/avonden, daarna weg', asyn
   const saus = recept('Romige saus', [ing('crème fraîche', 150, 'ml')], { porties: 4 }) // 4 eters: 150 van 200 ml
   repo.menu_ = { menu: menu([gerecht('Romige saus', 4)]), sha: 's' }
   await toon(repo, [saus])
-  const tip = screen.getByRole('button', { name: 'Pak crème fraîche op: 5 porties' })
+  const tip = screen.getByRole('button', { name: 'Pak crème fraîche op: 5 eters · 5 porties' })
   await userEvent.click(tip)
   expect(screen.getByLabelText('eters').textContent).toBe('5')
   expect(screen.queryByRole('button', { name: /^Pak .* op:/ })).toBeNull()
+})
+
+test('tip bij een batch zegt dat de avonden veranderen', async () => {
+  const repo = new NepRepo()
+  const bolo = recept('Bolognesesaus', [ing('crème fraîche', 150, 'ml')], { porties: 12, avonden: 3 }) // 4×3: 150 van 200 ml
+  repo.menu_ = { menu: menu([gerecht('Bolognesesaus', 4, { avonden: 3 })]), sha: 's' }
+  await toon(repo, [bolo])
+  await userEvent.click(screen.getByRole('button', { name: 'Pak crème fraîche op: 4 avonden · 16 porties' }))
+  expect(screen.getByLabelText('avonden').textContent).toBe('4')
+  expect(screen.getByLabelText('eters').textContent).toBe('4')
+})
+
+test('stapel: terug-knop haalt het laatst weggeveegde gerecht terug', async () => {
+  await toon(new NepRepo(), extra(6))
+  await userEvent.click(screen.getByRole('button', { name: /Gerecht erbij/ }))
+  const dlg = () => screen.getByRole('dialog')
+  const boven = () => within(dlg()).getByTestId('bovenste').querySelector('h2')!.textContent
+  expect((within(dlg()).getByRole('button', { name: 'Terug' }) as HTMLButtonElement).disabled).toBe(true)
+  const eerste = boven()
+  await userEvent.click(within(dlg()).getByRole('button', { name: 'Nee' }))
+  await waitFor(() => expect(boven()).not.toBe(eerste))
+  await userEvent.click(within(dlg()).getByRole('button', { name: 'Terug' }))
+  expect(boven()).toBe(eerste)
+})
+
+test('instellingen staat in de kop van het menu', async () => {
+  await toon(new NepRepo(), extra(3))
+  expect(within(screen.getByTestId('menu')).getByRole('link', { name: 'instellingen' }).getAttribute('href')).toBe('#/instellingen')
 })

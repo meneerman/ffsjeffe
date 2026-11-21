@@ -58,6 +58,13 @@ export function ReceptPagina({ recept: r, data }: { recept: Recept; data: AppDat
     else setLos((l) => ({ ...l, [veld]: w }))
   }
   const factor = schaalfactor(r, eters, avonden)
+  // origineel: eters × avonden = porties zoals het recept geschreven is
+  const orig = r.porties % r.avonden === 0 ? { eters: r.porties / r.avonden, avonden: r.avonden } : { eters: r.porties, avonden: 1 }
+  const isOrigineel = eters * avonden === r.porties
+  const naarOrigineel = () => {
+    if (opMenu) concept.wijzig((huidig) => huidig.map((g) => (g.receptId === r.id ? { ...g, ...orig } : g)))
+    else setLos(orig)
+  }
 
   const sleutel = `ffsjeffe.koken.${menu?.ronde ?? 'los'}.${r.id}`
   const [vg, setVg] = useState<Voortgang>(() => ({ i: [], v: [], s: [], ...(lees<Partial<Voortgang>>(sleutel) ?? {}) }))
@@ -79,6 +86,7 @@ export function ReceptPagina({ recept: r, data }: { recept: Recept; data: AppDat
         <Stapper naam="eters" icoon="👤" waarde={eters} wijzig={(n) => zet('eters', n)} />
         <Stapper naam="avonden" icoon="☾" waarde={avonden} wijzig={(n) => zet('avonden', n)} />
         {avonden > 1 && <span className="chip accent">{aantalPorties(eters, avonden)} porties</span>}
+        {!isOrigineel && <button className="chip origineel" onClick={naarOrigineel} aria-label={`Origineel (${r.porties} porties)`}><span aria-hidden="true">↺</span> Origineel ({r.porties} porties)</button>}
         {schermAan && <span className="chip scherm-aan"><span className="puls" aria-hidden="true" />scherm blijft aan</span>}
       </div>
 

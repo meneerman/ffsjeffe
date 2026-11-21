@@ -142,7 +142,10 @@ export function Menu({ data, repo, naam, herlaad, bijgewerkt, nu = () => new Dat
         {trek > 10 && <span>{trek > TREK_DREMPEL ? 'Loslaten om te verversen' : 'Trek om te verversen'}</span>}
       </div>
 
-      <div className="eyebrow">ffsjeffe · menu</div>
+      <div className="menu-kop">
+        <div className="eyebrow">ffsjeffe · menu</div>
+        <a className="link-zacht" href="#/instellingen">instellingen</a>
+      </div>
       <h1 className="kop">Wat eten we <em>deze keer?</em></h1>
 
       <div className="status zacht klein">
@@ -267,7 +270,7 @@ function GerechtKaart(p: {
             </div>
             {p.tip && (
               <button className="pakop" onClick={() => p.pasTipToe(p.tip!)}>
-                Pak {p.tip.naam} op: {p.tip.porties} porties
+                Pak {p.tip.naam} op: {p.tip.avonden !== p.avonden ? `${p.tip.avonden} avonden` : `${p.tip.eters} eters`} · {p.tip.porties} porties
               </button>
             )}
             <div className="gerecht-bediening">

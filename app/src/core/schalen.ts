@@ -3,7 +3,7 @@ import type { Ingredient } from './types'
 
 /** Max 1 decimaal, komma als scheidingsteken: 0,5 · 200 · 1,3 */
 export function toonHoeveelheid(h: number): string {
-  return (Math.round(h * 10) / 10).toLocaleString('nl-NL', { maximumFractionDigits: 1 })
+  return (Math.round(h * 10) / 10).toLocaleString('nl-NL', { maximumFractionDigits: 1, useGrouping: false })
 }
 
 const MAAT = new Set(['g', 'kg', 'ml', 'l', 'dl', 'cl'])
@@ -19,7 +19,7 @@ function rond(h: number, eenheid: string | null): number {
 
 function metEenheid(h: number, eenheid: string | null): string {
   const g = rond(h, eenheid)
-  const r = LEPEL.has(eenheid ?? '') ? g.toLocaleString('nl-NL', { maximumFractionDigits: 2 }) : toonHoeveelheid(g)
+  const r = LEPEL.has(eenheid ?? '') ? g.toLocaleString('nl-NL', { maximumFractionDigits: 2, useGrouping: false }) : toonHoeveelheid(g)
   return eenheid && eenheid !== 'stuk' ? `${r} ${eenheid}` : r
 }
 

@@ -155,5 +155,25 @@ test('recept niet op het menu: begint op de standaard avonden van het recept', a
 test('gewoon gerecht (1 avond) toont geen porties-chip', async () => {
   const d = await data()
   render(<ReceptPagina recept={recept2(d)} data={d} />)
-  expect(screen.queryByText(/porties/)).toBeNull()
+  expect(screen.queryByText(/^\d+ porties$/)).toBeNull()
+})
+
+test('terug naar het origineel zet eters × avonden op de porties van het recept', async () => {
+  const repo = new NepRepo()
+  repo.recepten_.push(recept('Bolognesesaus', [ing('half om half gehakt', 750, 'g')], { porties: 12, avonden: 3 }))
+  const d: AppData = { ...(await repo.recepten()), menu: { menu: { ...MENU, gerechten: [gerecht('Bolognesesaus', 4, { avonden: 4 })] }, sha: 's' }, instellingen: { huishouden: 4 }, keepStatus: null }
+  render(<ReceptPagina recept={recept2(d, 'Bolognesesaus')} data={d} />)
+  expect(screen.getByText('1000 g half om half gehakt')).toBeTruthy()
+  await userEvent.click(screen.getByRole('button', { name: 'Origineel (12 porties)' }))
+  expect(screen.getByText('750 g half om half gehakt')).toBeTruthy()
+  expect(screen.getByLabelText('avonden').textContent).toBe('3')
+  expect(screen.queryByRole('button', { name: /Origineel/ })).toBeNull()
+})
+
+test('origineel bij een gewoon recept van 2 porties: 2 eters, 1 avond', async () => {
+  const d = await data()
+  render(<ReceptPagina recept={recept2(d, WRAPS)} data={d} />)
+  await userEvent.click(screen.getByRole('button', { name: 'Origineel (4 porties)' }))
+  expect(screen.getByLabelText('eters').textContent).toBe('4')
+  expect(screen.queryByRole('button', { name: /Origineel/ })).toBeNull()
 })

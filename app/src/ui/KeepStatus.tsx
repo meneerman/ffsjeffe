@@ -16,6 +16,10 @@ export function KeepStatusMelding({ repo, vastgezetOp, begin, verberg = false, i
   const [status, setStatus] = useState<KeepStatus | null>(begin)
   const [opgegeven, setOpgegeven] = useState(false)
   const wachten = vastgezetOp !== null && !nieuwer(status, vastgezetOp)
+  // "Staat in Keep ✓" is een bevestiging van dit moment: alleen als we net zagen dat Keep is bijgewerkt. Later weten we het niet
+  // meer (de regels kunnen intussen afgevinkt zijn omdat ze besteld zijn), dus dan blijft de melding weg.
+  const [zagWachten, setZagWachten] = useState(wachten)
+  useEffect(() => { if (wachten) setZagWachten(true) }, [wachten])
 
   useEffect(() => {
     if (!wachten || opgegeven) return
@@ -36,6 +40,6 @@ export function KeepStatusMelding({ repo, vastgezetOp, begin, verberg = false, i
   if (verberg) return null
   if (wachten) return <p className="melding zacht">{opgegeven ? 'Keep reageert nog niet. Kijk straks nog eens.' : 'Keep bijwerken…'}</p>
   if (status && !status.ok) return <p className="melding fout">Keep bijwerken mislukt: {status.melding}</p>
-  if (vastgezetOp && status?.ok) return <p className="melding goed">Staat in Keep ✓</p>
+  if (vastgezetOp && status?.ok && zagWachten) return <p className="melding goed">Staat in Keep ✓</p>
   return null
 }

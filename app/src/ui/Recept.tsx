@@ -49,7 +49,9 @@ export function ReceptPagina({ recept: r, data, repo, naam }: { recept: Recept; 
   const menu = data.menu?.menu ?? null
   const concept = useConcept(data, menu, repo, naam)
   const opMenu = concept.gerechten.find((g) => g.receptId === r.id)
-  const [los, setLos] = useState({ eters: data.instellingen.huishouden, avonden: r.avonden })
+  // een al vastgezet gerecht kook je met de eters en avonden waarmee het gekocht is; die aanpassen kan hier alleen voor dit scherm
+  const vastgezet = menu?.gerechten.find((g) => g.receptId === r.id)
+  const [los, setLos] = useState({ eters: vastgezet?.eters ?? data.instellingen.huishouden, avonden: vastgezet?.avonden ?? r.avonden })
   const eters = opMenu?.eters ?? los.eters
   const avonden = opMenu?.avonden ?? los.avonden
   const zet = (veld: 'eters' | 'avonden', n: number) => {

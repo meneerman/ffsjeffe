@@ -13,14 +13,16 @@ afterEach(() => { cleanup(); vi.unstubAllGlobals() })
 
 const MENU: Menu = { versie: 2, ronde: 'R1', gerechten: [gerecht(PASTA, 3)], boodschappen: [], vastgezetOp: '2026-11-20T10:00:00.000Z', door: 'P', leegmakenOp: null, laatstGegeten: {} }
 
-async function data(menu: Menu | null = MENU): Promise<AppData> {
+/** Standaard staat PASTA in het concept (Plannen); met `menu` is het juist al vastgezet. */
+async function data(menu: Menu | null = null): Promise<AppData> {
   const repo = new NepRepo()
-  return { ...(await repo.recepten()), menu: menu ? { menu, sha: 's' } : null, instellingen: { huishouden: 2 }, keepStatus: null, concept: null }
+  const concept = menu ? null : { concept: { gerechten: MENU.gerechten, sinds: '2026-11-21T09:00:00.000Z', door: 'P' }, sha: 'c' }
+  return { ...(await repo.recepten()), menu: menu ? { menu, sha: 's' } : null, instellingen: { huishouden: 2 }, keepStatus: null, concept }
 }
 const recept2 = (d: AppData, id = PASTA) => d.recepten.find((r) => r.id === id)!
 
 test('kop, chips, benodigdheden, geschaalde ingrediënten, voorbereiding en bereiding', async () => {
-  const d = await data()
+  const d = await data(MENU)
   render(<ReceptPagina recept={recept2(d)} data={d} repo={new NepRepo()} naam="Menno" />)
   expect(screen.getByRole('heading', { level: 1 }).textContent).toBe(PASTA)
   expect(screen.getByText('25 min')).toBeTruthy()
@@ -129,7 +131,7 @@ test('app toont de kookpagina via #/recept/<titel> en onbekend recept netjes', a
 test('batchgerecht: porties, eters en avonden los te plussen, hoeveelheden kloppen', async () => {
   const repo = new NepRepo()
   repo.recepten_.push(recept('Bolognesesaus', [ing('half om half gehakt', 750, 'g')], { porties: 12, avonden: 3, stappen: ['Bak {750 g} gehakt 8 min.'] }))
-  const d: AppData = { ...(await repo.recepten()), menu: { menu: { ...MENU, gerechten: [gerecht('Bolognesesaus', 4, { avonden: 3 })] }, sha: 's' }, instellingen: { huishouden: 4 }, keepStatus: null, concept: null }
+  const d: AppData = { ...(await repo.recepten()), menu: null, instellingen: { huishouden: 4 }, keepStatus: null, concept: { concept: { gerechten: [gerecht('Bolognesesaus', 4, { avonden: 3 })], sinds: '2026-11-21T09:00:00.000Z', door: 'P' }, sha: 'c' } }
   render(<ReceptPagina recept={recept2(d, 'Bolognesesaus')} data={d} repo={new NepRepo()} naam="Menno" />)
   expect(screen.getByText('12 porties')).toBeTruthy()
   expect(screen.getByText('750 g half om half gehakt')).toBeTruthy()
@@ -161,7 +163,7 @@ test('gewoon gerecht (1 avond) toont geen porties-chip', async () => {
 test('terug naar het origineel zet eters × avonden op de porties van het recept', async () => {
   const repo = new NepRepo()
   repo.recepten_.push(recept('Bolognesesaus', [ing('half om half gehakt', 750, 'g')], { porties: 12, avonden: 3 }))
-  const d: AppData = { ...(await repo.recepten()), menu: { menu: { ...MENU, gerechten: [gerecht('Bolognesesaus', 4, { avonden: 4 })] }, sha: 's' }, instellingen: { huishouden: 4 }, keepStatus: null, concept: null }
+  const d: AppData = { ...(await repo.recepten()), menu: null, instellingen: { huishouden: 4 }, keepStatus: null, concept: { concept: { gerechten: [gerecht('Bolognesesaus', 4, { avonden: 4 })], sinds: '2026-11-21T09:00:00.000Z', door: 'P' }, sha: 'c' } }
   render(<ReceptPagina recept={recept2(d, 'Bolognesesaus')} data={d} repo={new NepRepo()} naam="Menno" />)
   expect(screen.getByText('1000 g half om half gehakt')).toBeTruthy()
   await userEvent.click(screen.getByRole('button', { name: 'Origineel (12 porties)' }))

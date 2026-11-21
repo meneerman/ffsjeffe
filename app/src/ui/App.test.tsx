@@ -1,4 +1,4 @@
-import { cleanup, render, screen, waitFor } from '@testing-library/react'
+import { cleanup, render, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { afterEach, beforeEach, expect, test } from 'vitest'
 import { TokenFout } from '../data/github'
@@ -91,7 +91,11 @@ test('gegeten blijft staan na recept openen en terug, en vastzetten daarna geeft
   window.dispatchEvent(new HashChangeEvent('hashchange'))
   expect(await screen.findByText(/✓ gegeten/)).toBeTruthy()
   await userEvent.click(screen.getByRole('tab', { name: 'Plannen' })) // het vastgezette menu opent in Bereiden
+  await userEvent.click(screen.getByRole('button', { name: /Gerecht erbij/ }))
+  await userEvent.click(within(screen.getByRole('dialog')).getByRole('button', { name: 'Erbij' }))
+  await waitFor(() => expect((screen.getByRole('button', { name: /Op de boodschappenlijst/ }) as HTMLButtonElement).disabled).toBe(false))
   await userEvent.click(screen.getByRole('button', { name: /Op de boodschappenlijst/ }))
+  await userEvent.click(within(screen.getByRole('dialog', { name: 'Naar Keep sturen' })).getByRole('button', { name: 'Ja, naar Keep' }))
   await waitFor(() => expect(repo.geschreven).toHaveLength(2))
   expect(screen.queryByText(/Iemand anders/)).toBeNull()
 })

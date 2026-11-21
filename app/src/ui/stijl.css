@@ -239,3 +239,8 @@ footer { margin-top: 40px; text-align: center; }
 .nalopen-groep label { display: flex; align-items: center; gap: 12px; min-height: 44px; font-size: 15px; cursor: pointer; }
 .nalopen-groep input { width: 20px; height: 20px; flex: none; accent-color: #d9c9a3; }
 .nalopen-groep input:not(:checked) + span { color: var(--zacht); text-decoration: line-through; }
+
+/* bevestigscherm voor de boodschappenlijst: lang genoeg om te scrollen */
+.paneel.ruim { max-height: 88vh; overflow-y: auto; }
+.paneel.ruim .nalopen { margin-top: 10px; }
+.knop.primair { background: var(--accent); border-color: transparent; color: #0b0b0e; }

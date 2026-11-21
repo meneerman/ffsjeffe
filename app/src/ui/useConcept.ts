@@ -18,7 +18,7 @@ const tijd = (c: { sinds: string } | null) => (c ? Date.parse(c.sinds) : NaN)
  * (weekmenu/concept.json, niet menu.json: alleen menu.json start de Keep-sync), zodat twee mensen los van
  * elkaar kunnen voorbereiden en één van hen later naar Keep stuurt.
  *
- * Volgorde: nieuwste geldige concept (lokaal of gedeeld) → vastgezet niet-leeg menu → voorstel van 3.
+ * Volgorde: nieuwste geldige concept (lokaal of gedeeld) → leeg als er al een menu vastgezet is → voorstel van 3.
  * Een concept vervalt als iemand daarna (opnieuw) vastzette of leegmaakte.
  * Schrijven gaat met uitstel; bij een botsing met de ander wint de laatste schrijver.
  */
@@ -46,7 +46,7 @@ export function useConcept(data: AppData, menu: Menu | null, repo: Repo, naam: s
   const perId = useMemo(() => new Map(recepten.map((r) => [r.id, r])), [recepten])
   const basis = useMemo(
     () => menu && menu.gerechten.length > 0
-      ? menu.gerechten
+      ? [] // wat al vastgezet is staat in Bereiden; Plannen begint leeg voor wat erbij komt
       : stelVoor(recepten, menu?.laatstGegeten ?? {}, verpakkingen, instellingen.huishouden, zaadVoor(menu), new Date()),
     [menu, recepten, verpakkingen, instellingen.huishouden],
   )

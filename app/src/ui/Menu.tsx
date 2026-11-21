@@ -41,7 +41,15 @@ export function Menu({ data, repo, naam, herlaad, bijgewerkt, nu = () => new Dat
   const perId = useMemo(() => Object.fromEntries(data.recepten.map((r) => [r.id, r])), [data.recepten])
   const laatstGegeten = menu?.laatstGegeten ?? {}
   const vastgezet = useMemo(() => new Map((menu?.gerechten ?? []).map((g) => [g.receptId, g])), [menu])
-  const items = boodschappenItems(behoeften(gerechten, perId), data.verpakkingen)
+  // wat in Plannen staat komt bij het vastgezette menu (hetzelfde gerecht vervangt het oude); de boodschappen gaan over alles
+  const samen = useMemo(() => {
+    const nieuw = new Set(gerechten.map((g) => g.receptId))
+    return [...(menu?.gerechten ?? []).filter((g) => !nieuw.has(g.receptId)), ...gerechten]
+  }, [menu, gerechten])
+  const items = boodschappenItems(behoeften(samen, perId), data.verpakkingen)
+  // in het nalopen alleen wat nog niet op Keep staat
+  const opKeep = new Set(menu?.boodschappen ?? [])
+  const nieuweItems = items.filter((i) => !opKeep.has(i.regel))
   // wat je uitvinkt gaat deze ronde niet naar Keep; alleen op dit toestel, tot het vastzetten
   const [uit, setUit] = useState<Set<string>>(new Set())
   const wisselRegel = (regel: string) => setUit((u) => {
@@ -54,6 +62,7 @@ export function Menu({ data, repo, naam, herlaad, bijgewerkt, nu = () => new Dat
 
   const [toevoegen, setToevoegen] = useState(false)
   const [leegVragen, setLeegVragen] = useState(false)
+  const [bevestigVast, setBevestigVast] = useState(false)
   const [bezig, setBezig] = useState(false)
   const [fout, setFout] = useState<Error | null>(null)
   const [verdwijnt, setVerdwijnt] = useState<Set<string>>(new Set())
@@ -76,7 +85,7 @@ export function Menu({ data, repo, naam, herlaad, bijgewerkt, nu = () => new Dat
   }
 
   const zetVast = async () => {
-    const m = vastzetten(menu, gerechten, regels, naam, nu())
+    const m = vastzetten(menu, samen, regels, naam, nu())
     if (await schrijf(m, `Menu vastgezet door ${naam}`)) {
       setModus('bereiden')
       setUit(new Set())
@@ -167,7 +176,7 @@ export function Menu({ data, repo, naam, herlaad, bijgewerkt, nu = () => new Dat
   const kanBereiden = !!menu && menu.gerechten.length > 0
   const bereiden = kanBereiden && (modus ?? (concept.heeftConcept ? 'plannen' : 'bereiden')) === 'bereiden'
   const [teVerwijderen, setTeVerwijderen] = useState<string | null>(null)
-  const magVastzetten = gerechten.length > 0 || (menu?.gerechten.length ?? 0) > 0
+  const magVastzetten = gerechten.length > 0
 
   return (
     <div data-testid="menu" className="menu" {...trekHandlers}>
@@ -260,7 +269,7 @@ export function Menu({ data, repo, naam, herlaad, bijgewerkt, nu = () => new Dat
         </div>
       )}
 
-      {bereiden && menu ? <Boodschappen titel="In huis (uit Keep)" regels={menu.boodschappen} /> : <NaLopen items={items} categorieen={data.categorieen} uit={uit} onWissel={wisselRegel} />}
+      {bereiden && menu ? <Boodschappen titel="In huis (uit Keep)" regels={menu.boodschappen} /> : <NaLopen items={nieuweItems} categorieen={data.categorieen} uit={uit} onWissel={wisselRegel} />}
 
       {fout && (
         <div className="kaart foutblok">
@@ -271,7 +280,7 @@ export function Menu({ data, repo, naam, herlaad, bijgewerkt, nu = () => new Dat
 
       <div className="onderbalk">
         {!bereiden && (
-          <button className="pil" onClick={zetVast} disabled={bezig || !magVastzetten}>
+          <button className="pil" onClick={() => setBevestigVast(true)} disabled={bezig || !magVastzetten}>
             {bezig ? 'Bezig…' : 'Op de boodschappenlijst'} <span className="pil-pijl" aria-hidden="true">→</span>
           </button>
         )}
@@ -301,6 +310,20 @@ export function Menu({ data, repo, naam, herlaad, bijgewerkt, nu = () => new Dat
             <div className="knoppenrij">
               <button className="knop" onClick={() => setTeVerwijderen(null)}>Annuleren</button>
               <button className="knop gevaar" onClick={() => { const id = teVerwijderen; setTeVerwijderen(null); verwijder(id) }}>Verwijderen</button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {bevestigVast && (
+        <div className="paneel-achtergrond" onClick={() => setBevestigVast(false)}>
+          <div className="paneel ruim" role="dialog" aria-label="Naar Keep sturen" onClick={(e) => e.stopPropagation()}>
+            <h2 className="kop-klein">Weet je het zeker?</h2>
+            <p className="zacht">Dit gaat naar Keep. Vink nog uit wat je al in huis hebt.</p>
+            <NaLopen items={nieuweItems} categorieen={data.categorieen} uit={uit} onWissel={wisselRegel} />
+            <div className="knoppenrij">
+              <button className="knop" onClick={() => setBevestigVast(false)}>Annuleren</button>
+              <button className="knop primair" disabled={bezig} onClick={() => { setBevestigVast(false); void zetVast() }}>Ja, naar Keep</button>
             </div>
           </div>
         </div>

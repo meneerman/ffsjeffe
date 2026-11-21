@@ -217,7 +217,10 @@ export function Menu({ data, repo, naam, herlaad, bijgewerkt, nu = () => new Dat
           )}
         </div>
       )}
-      <KeepStatusMelding key={menu?.vastgezetOp ?? 'geen'} repo={repo} vastgezetOp={menu?.vastgezetOp ?? null} begin={data.keepStatus} verberg={!bereiden && concept.heeftConcept} />
+      {/* alleen in Bereiden, en alleen als er echt iets van ffsjeffe in Keep hoort te staan */}
+      {bereiden && menu && menu.gerechten.length > 0 && menu.boodschappen.length > 0 && (
+        <KeepStatusMelding key={menu.vastgezetOp} repo={repo} vastgezetOp={menu.vastgezetOp} begin={data.keepStatus} />
+      )}
       {bereiden && concept.heeftConcept && (
         <div className="status concept-status zacht klein">Concept van {concept.door ?? 'iemand'} ligt klaar voor de volgende boodschappen (tab Plannen).</div>
       )}

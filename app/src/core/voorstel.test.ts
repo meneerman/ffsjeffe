@@ -1,5 +1,5 @@
 import { expect, test } from 'vitest'
-import { dagenGeleden, kandidaten, restjes, score, stelVoor } from './voorstel'
+import { dagenGeleden, kandidaten, restjes, score, stelVoor, vervang } from './voorstel'
 import { gerecht, ing, recept } from './testdata'
 
 const NU = new Date('2026-11-21T12:00:00Z')
@@ -66,4 +66,23 @@ test('voorstel en kandidaten gebruiken alleen avondeten', () => {
   const rs = [recept('Toetje', [], { soort: 'toetje' }), recept('Ontbijt', [], { soort: 'ontbijt' }), recept('Diner', [])]
   expect(stelVoor(rs, {}, {}, 4, 'z', NU).map((g) => g.receptId)).toEqual(['Diner'])
   expect(kandidaten([], rs, {}, {}, 4, 'z', NU).map((r) => r.id)).toEqual(['Diner'])
+})
+
+test('vervang: volgende beste op dezelfde plek, eters en avonden blijven', () => {
+  const rs = [recept('A', []), recept('B', []), recept('C', []), recept('D', [], { avonden: 3 })]
+  const laatst = { A: '2026-11-20', B: '2026-10-01', C: '2026-11-10', D: '2026-08-01' }
+  const menu = [gerecht('A', 5, { avonden: 2 }), gerecht('B', 3)]
+  const nieuw = vervang(menu, 'A', rs, laatst, {}, 4, 'z', NU, new Set())!
+  expect(nieuw).toHaveLength(2)
+  expect(nieuw[0]).toMatchObject({ receptId: 'D', eters: 5, avonden: 2, gegetenOp: null }) // beste die nog niet op het menu staat
+  expect(nieuw[1]).toEqual(menu[1])
+})
+
+test('vervang slaat al weggeveegde recepten over; geen alternatief = null', () => {
+  const rs = [recept('A', []), recept('B', []), recept('C', [])]
+  const laatst = { A: '2026-11-20', B: '2026-09-01', C: '2026-10-01' }
+  expect(vervang([gerecht('A')], 'A', rs, laatst, {}, 2, 'z', NU, new Set(['B']))![0].receptId).toBe('C')
+  expect(vervang([gerecht('A')], 'A', rs, laatst, {}, 2, 'z', NU, new Set(['B', 'C']))).toBeNull()
+  expect(vervang([gerecht('A')], 'A', [recept('A', [])], {}, {}, 2, 'z', NU, new Set())).toBeNull()
+  expect(vervang([gerecht('A')], 'weg', rs, laatst, {}, 2, 'z', NU, new Set())).toBeNull()
 })

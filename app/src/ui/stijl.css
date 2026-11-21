@@ -78,6 +78,9 @@ footer { margin-top: 40px; text-align: center; }
 .status { margin: -6px 0 4px; }
 .gerechten { list-style: none; padding: 0; margin: 14px 0 0; display: grid; gap: 10px; }
 .gerecht-rij { position: relative; max-height: 220px; transition: max-height 0.2s ease 0.22s, opacity 0.2s ease 0.22s, margin 0.2s ease 0.22s; }
+.gerecht-rij { touch-action: pan-y; }
+.gerecht-rij.binnen .gerecht { animation: binnen 0.32s var(--veer); }
+@keyframes binnen { from { transform: translateX(-36px); opacity: 0; } to { transform: none; opacity: 1; } }
 .gerecht-rij.uit { max-height: 0; opacity: 0; margin-top: -10px; }
 .gerecht { position: relative; display: flex; flex-direction: column; align-items: stretch; gap: 10px; background: #121216; transition: transform 0.25s var(--veer), opacity 0.25s; }
 .gerecht-rij.uit .gerecht { transform: translateX(-24px); opacity: 0; }
@@ -100,6 +103,8 @@ footer { margin-top: 40px; text-align: center; }
 .gegeten-knop.aan { background: var(--accent); color: var(--bg); border-color: var(--accent); }
 .gegeten-knop .label { display: none; }
 @media (min-width: 420px) { .gegeten-knop .label { display: inline; } }
+.wissel-knop { width: 30px; height: 30px; border-radius: 50%; border: 0; background: none; color: var(--zacht); font-size: 17px; line-height: 1; }
+.wissel-knop:hover { color: var(--tekst); }
 .verwijder-knop { width: 30px; height: 30px; border-radius: 50%; border: 0; background: none; color: var(--zacht); font-size: 20px; line-height: 1; }
 .gerecht-rij.gegeten .gerecht { opacity: 0.55; }
 .gerecht-rij.gegeten .titel { text-decoration: line-through; text-decoration-color: rgba(236, 235, 231, 0.35); }
@@ -175,6 +180,7 @@ footer { margin-top: 40px; text-align: center; }
 .gerecht-kop { display: flex; align-items: flex-start; gap: 8px; }
 .gerecht-bediening { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; position: relative; z-index: 1; }
 .gerecht-bediening .gegeten-knop { margin-left: auto; }
+.gerecht-kop .wissel-knop { position: relative; z-index: 1; margin: -4px 0 0 0; }
 .gerecht-kop .verwijder-knop { position: relative; z-index: 1; margin: -4px -6px 0 0; }
 .stapper { display: inline-flex; align-items: center; border: 1px solid var(--rand); border-radius: 99px; background: var(--vlak); }
 .stapper button { width: 34px; height: 34px; border: 0; background: none; font-size: 18px; color: var(--zacht); }
@@ -206,3 +212,6 @@ footer { margin-top: 40px; text-align: center; }
 
 .chip.vries { color: #9fd3ff; border-color: rgba(159, 211, 255, 0.3); }
 .chip.vries.accent { background: rgba(159, 211, 255, 0.12); }
+
+.concept-status { margin-top: -2px; }
+.concept-status .bewaard { color: var(--accent, #a78bfa); }

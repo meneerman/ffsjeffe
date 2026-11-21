@@ -5,7 +5,7 @@ import type { Recept } from '../core/types'
 import { lees, schrijf } from './opslag'
 import { Stapper } from './Stapper'
 import { useConcept } from './useConcept'
-import type { AppData } from './useData'
+import type { AppData, Repo } from './useData'
 
 type Lock = { release: () => Promise<void>; released?: boolean; addEventListener?: (t: 'release', f: () => void) => void }
 type WakeLockApi = { request: (t: 'screen') => Promise<Lock> }
@@ -44,10 +44,10 @@ function useSchermAan(): boolean {
 
 type Voortgang = { i: number[]; v: number[]; s: number[] }
 
-export function ReceptPagina({ recept: r, data }: { recept: Recept; data: AppData }) {
+export function ReceptPagina({ recept: r, data, repo, naam }: { recept: Recept; data: AppData; repo: Repo; naam: string }) {
   const schermAan = useSchermAan()
   const menu = data.menu?.menu ?? null
-  const concept = useConcept(data, menu)
+  const concept = useConcept(data, menu, repo, naam)
   const opMenu = concept.gerechten.find((g) => g.receptId === r.id)
   const [los, setLos] = useState({ eters: data.instellingen.huishouden, avonden: r.avonden })
   const eters = opMenu?.eters ?? los.eters

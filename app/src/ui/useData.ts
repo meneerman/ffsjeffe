@@ -1,8 +1,8 @@
 import { useCallback, useEffect, useState } from 'react'
-import type { Instellingen, Menu, Recept, ReceptFout, Verpakkingen } from '../core/types'
+import type { Concept, Instellingen, Menu, Recept, ReceptFout, Verpakkingen } from '../core/types'
 import type { DataRepo, KeepStatus } from '../data/github'
 
-export type Repo = Pick<DataRepo, 'recepten' | 'menu' | 'instellingen' | 'keepStatus' | 'zetMenu'>
+export type Repo = Pick<DataRepo, 'recepten' | 'menu' | 'instellingen' | 'keepStatus' | 'zetMenu' | 'concept' | 'zetConcept'>
 
 export type AppData = {
   recepten: Recept[]
@@ -11,6 +11,7 @@ export type AppData = {
   menu: { menu: Menu; sha: string } | null
   instellingen: Instellingen
   keepStatus: KeepStatus | null
+  concept: { concept: Concept; sha: string } | null
 }
 
 export type DataStaat =
@@ -28,9 +29,9 @@ export function useData(repo: Repo | null): DataStaat & { herlaad: () => void; b
     let actief = true
     // Verversen houdt de oude gegevens zichtbaar (geen flits naar "Laden…")
     setStaat((s) => (s.status === 'klaar' ? s : { status: 'laden' }))
-    Promise.all([repo.recepten(), repo.menu(), repo.instellingen(), repo.keepStatus()])
-      .then(([r, menu, instellingen, keepStatus]) => {
-        if (actief) setStaat({ status: 'klaar', data: { ...r, menu, instellingen, keepStatus } })
+    Promise.all([repo.recepten(), repo.menu(), repo.instellingen(), repo.keepStatus(), repo.concept()])
+      .then(([r, menu, instellingen, keepStatus, concept]) => {
+        if (actief) setStaat({ status: 'klaar', data: { ...r, menu, instellingen, keepStatus, concept } })
       })
       .catch((fout: Error) => actief && setStaat({ status: 'fout', fout }))
     return () => {

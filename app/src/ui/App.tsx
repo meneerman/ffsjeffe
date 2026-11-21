@@ -26,7 +26,7 @@ function Inhoud(p: SchermProps) {
   if (p.hash.startsWith('#/recept/')) {
     const id = decodeURIComponent(p.hash.slice('#/recept/'.length))
     const r = p.data.recepten.find((x) => x.id === id)
-    return r ? <ReceptPagina key={r.id} recept={r} data={p.data} /> : (
+    return r ? <ReceptPagina key={r.id} recept={r} data={p.data} repo={p.repo} naam={p.naam} /> : (
       <p className="kaart">Recept niet gevonden. <a className="link-accent" href="#/">Terug naar het menu</a></p>
     )
   }

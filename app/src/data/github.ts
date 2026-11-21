@@ -1,5 +1,5 @@
 import { parseRecept, parseVerpakkingen } from '../core/recepten'
-import type { Instellingen, Menu, Recept, ReceptFout, Verpakkingen } from '../core/types'
+import type { Concept, Instellingen, Menu, Recept, ReceptFout, Verpakkingen } from '../core/types'
 
 export type Verbinding = { owner: string; repo: string; token: string }
 export type KeepStatus = { tijd: string; ok: boolean; melding: string; weken: string[] }
@@ -29,6 +29,8 @@ export function vanBase64(b64: string): string {
 }
 
 const MENU = 'weekmenu/menu.json'
+/** Het gedeelde concept: bewust een apart bestand, want alleen een push op menu.json start de Keep-sync. */
+const CONCEPT = 'weekmenu/concept.json'
 
 export class DataRepo {
   constructor(private v: Verbinding, private f: typeof fetch = (...a) => fetch(...a)) {}
@@ -108,15 +110,26 @@ export class DataRepo {
     return b ? (JSON.parse(b.inhoud) as KeepStatus) : null
   }
 
-  async zetMenu(menu: Menu, sha: string | null, bericht: string): Promise<string> {
+  async concept(): Promise<{ concept: Concept; sha: string } | null> {
+    const b = await this.bestand(CONCEPT)
+    if (!b) return null
+    try {
+      const c = JSON.parse(b.inhoud) as Concept
+      if (c && Array.isArray(c.gerechten) && typeof c.sinds === 'string') return { concept: c, sha: b.sha }
+    } catch {
+      /* onbruikbaar: negeren, de eerstvolgende wijziging overschrijft het */
+    }
+    return null
+  }
+
+  private async schrijf(pad: string, waarde: unknown, sha: string | null, bericht: string): Promise<string> {
     const body: Record<string, string> = {
       message: bericht,
-      content: naarBase64(JSON.stringify(menu, null, 2) + '\n'),
+      content: naarBase64(JSON.stringify(waarde, null, 2) + '\n'),
       branch: 'main',
     }
-    const echteSha = sha ?? this.onbruikbaarSha
-    if (echteSha) body.sha = echteSha
-    const res = await this.vraag(`contents/${MENU}`, { method: 'PUT', body: JSON.stringify(body) }, [409, 422])
+    if (sha) body.sha = sha
+    const res = await this.vraag(`contents/${pad}`, { method: 'PUT', body: JSON.stringify(body) }, [409, 422])
     if (res.status === 409) throw new VerouderdFout()
     if (res.status === 422) {
       const tekst = await res.text()
@@ -124,5 +137,13 @@ export class DataRepo {
       throw new Error('GitHub gaf status 422')
     }
     return ((await res.json()) as { content: { sha: string } }).content.sha
+  }
+
+  async zetMenu(menu: Menu, sha: string | null, bericht: string): Promise<string> {
+    return this.schrijf(MENU, menu, sha ?? this.onbruikbaarSha, bericht)
+  }
+
+  async zetConcept(concept: Concept, sha: string | null, bericht: string): Promise<string> {
+    return this.schrijf(CONCEPT, concept, sha, bericht)
   }
 }

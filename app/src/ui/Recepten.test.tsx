@@ -21,7 +21,7 @@ const MENU: Menu = { versie: 2, ronde: 'R', gerechten: [gerecht(PASTA, 4)], bood
 async function toon(menu: Menu | null = MENU) {
   const repo = new NepRepo()
   repo.recepten_.push(...EXTRA)
-  const data: AppData = { ...(await repo.recepten()), menu: menu ? { menu, sha: 's' } : null, instellingen: { huishouden: 4 }, keepStatus: null }
+  const data: AppData = { ...(await repo.recepten()), menu: menu ? { menu, sha: 's' } : null, instellingen: { huishouden: 4 }, keepStatus: null, concept: null }
   render(<Recepten data={data} repo={repo} naam="Menno" herlaad={() => {}} bijgewerkt={() => {}} hash="#/recepten" />)
 }
 const vinkje = (titel: string) => screen.getByRole('checkbox', { name: titel }) as HTMLInputElement

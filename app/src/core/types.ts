@@ -43,4 +43,7 @@ export type Menu = {
   laatstGegeten: Record<string, string>
 }
 
+/** Menu in de maak: gedeeld tussen toestellen, nog niet naar Keep. `sinds` = laatste wijziging. */
+export type Concept = { gerechten: Gerecht[]; sinds: string; door: string }
+
 export type Instellingen = { huishouden: number }

@@ -28,10 +28,10 @@ const menu = (gerechten = [gerecht(PASTA, 2)], extraVelden: Partial<MenuT> = {})
 async function toon(repo: NepRepo, recepten: Recept[] = [], herlaad = vi.fn()) {
   repo.recepten_ = [...repo.recepten_, ...recepten]
   const r = await repo.recepten()
-  const data: AppData = { ...r, menu: repo.menu_, instellingen: { huishouden: 2 }, keepStatus: null }
+  const data: AppData = { ...r, menu: repo.menu_, instellingen: { huishouden: 2 }, keepStatus: null, concept: repo.concept_ }
   function Houder() {
     const [d, setD] = useState(data)
-    return <Menu data={d} repo={repo} naam="Menno" herlaad={herlaad} bijgewerkt={(menu) => setD((x) => ({ ...x, menu }))} hash="#/" nu={() => NU} />
+    return <Menu data={d} repo={repo} naam="Menno" herlaad={herlaad} bijgewerkt={(menu) => setD((x) => ({ ...x, menu }))} hash="#/" nu={() => NU} bewaarVertraging={0} />
   }
   render(<Houder />)
   return { data, herlaad }
@@ -358,4 +358,124 @@ test('invriesbaar gerecht krijgt een ❄ op de kaart', async () => {
   repo.menu_ = { menu: menu([gerecht('Soep', 4)]), sha: 's' }
   await toon(repo, [recept('Soep', [ing('linzen', 400, 'g')], { invriezen: true })])
   expect(within(kaarten()[0]).getByText(/❄ invriesbaar/)).toBeTruthy()
+})
+
+// ---- doorswipen ----
+const kaartDiv = (i: number) => kaarten()[i]
+function veeg(kaart: HTMLElement, van: number, naar: number) {
+  fireEvent.pointerDown(kaart, { clientX: van, clientY: 100 })
+  fireEvent.pointerMove(kaart, { clientX: naar, clientY: 104 })
+  fireEvent.pointerUp(kaart, { clientX: naar, clientY: 104 })
+}
+
+test('kaart opzij vegen: volgende beste gerecht op dezelfde plek, eters en avonden blijven', async () => {
+  await toon(new NepRepo(), extra(6))
+  await userEvent.click(within(kaartDiv(0)).getByRole('button', { name: 'Meer eters' }))
+  await userEvent.click(within(kaartDiv(0)).getByRole('button', { name: 'Meer avonden' }))
+  const voor = titels()
+  veeg(kaartDiv(0), 250, 40)
+  await waitFor(() => expect(titels()[0]).not.toBe(voor[0]))
+  expect(titels().slice(1)).toEqual(voor.slice(1))
+  expect(within(kaartDiv(0)).getByLabelText('eters').textContent).toBe('3')
+  expect(within(kaartDiv(0)).getByLabelText('avonden').textContent).toBe('2')
+  // naar rechts kan ook, en het eerder weggeveegde recept komt niet meteen terug
+  const tweede = titels()[0]
+  veeg(kaartDiv(0), 40, 250)
+  await waitFor(() => expect(titels()[0]).not.toBe(tweede))
+  expect(titels()[0]).not.toBe(voor[0])
+  expect(new Set(titels()).size).toBe(3)
+})
+
+test('kort vegen of vegen zonder alternatief verandert niets, en opent het recept niet', async () => {
+  const repo = new NepRepo()
+  repo.recepten_ = []
+  await toon(repo, extra(3)) // alle 3 staan al op het menu: geen alternatief
+  const voor = titels()
+  veeg(kaartDiv(0), 100, 60)
+  veeg(kaartDiv(0), 250, 40)
+  await new Promise((r) => setTimeout(r, 500))
+  expect(titels()).toEqual(voor)
+  expect(kaarten()).toHaveLength(3)
+})
+
+test('ander gerecht-knop doet hetzelfde als vegen', async () => {
+  await toon(new NepRepo(), extra(6))
+  const voor = titels()
+  await userEvent.click(screen.getByRole('button', { name: `Ander gerecht voor ${voor[1]}` }))
+  await waitFor(() => expect(titels()[1]).not.toBe(voor[1]))
+  expect([titels()[0], titels()[2]]).toEqual([voor[0], voor[2]])
+})
+
+// ---- concept bewaren zonder Keep ----
+test('wijzigingen worden automatisch bewaard als gedeeld concept, niet naar Keep gestuurd', async () => {
+  const repo = new NepRepo()
+  await toon(repo, extra(3))
+  await userEvent.click(within(kaartDiv(0)).getByRole('button', { name: 'Meer eters' }))
+  await waitFor(() => expect(repo.conceptGeschreven.length).toBeGreaterThan(0))
+  const c = repo.conceptGeschreven.at(-1)!
+  expect(c.door).toBe('Menno')
+  expect(c.gerechten[0].eters).toBe(3)
+  expect(repo.geschreven).toHaveLength(0) // menu.json (en dus Keep) blijft onaangeroerd
+  await screen.findByText(/✓ bewaard/)
+  expect(screen.getByText(/nog niet op Keep/)).toBeTruthy()
+})
+
+test('concept van de ander verschijnt op dit toestel', async () => {
+  const repo = new NepRepo()
+  repo.menu_ = { menu: menu([gerecht(PASTA, 2)], { door: 'Partner' }), sha: 's' }
+  repo.concept_ = { concept: { gerechten: [gerecht(WRAPS, 5)], sinds: '2026-11-21T09:00:00.000Z', door: 'Partner' }, sha: 'c0' }
+  await toon(repo)
+  expect(titels()).toEqual([WRAPS])
+  expect(within(kaartDiv(0)).getByLabelText('eters').textContent).toBe('5')
+  expect(screen.getByText(/Concept van Partner/)).toBeTruthy()
+})
+
+test('concept van voor het laatste vastzetten telt niet meer', async () => {
+  const repo = new NepRepo()
+  repo.menu_ = { menu: menu([gerecht(PASTA, 2)]), sha: 's' }
+  repo.concept_ = { concept: { gerechten: [gerecht(WRAPS, 5)], sinds: '2026-11-19T09:00:00.000Z', door: 'Partner' }, sha: 'c0' }
+  await toon(repo)
+  expect(titels()).toEqual([PASTA])
+})
+
+test('het nieuwste van lokaal en gedeeld concept wint', async () => {
+  const repo = new NepRepo()
+  localStorage.setItem('ffsjeffe.concept', JSON.stringify({ gerechten: [gerecht(PASTA, 3)], sinds: '2026-11-21T11:00:00.000Z' }))
+  repo.concept_ = { concept: { gerechten: [gerecht(WRAPS, 5)], sinds: '2026-11-21T09:00:00.000Z', door: 'Partner' }, sha: 'c0' }
+  await toon(repo)
+  expect(titels()).toEqual([PASTA])
+})
+
+test('bewaren mislukt: melding en opnieuw proberen', async () => {
+  const repo = new NepRepo()
+  repo.conceptFout = new Error('GitHub gaf status 500')
+  await toon(repo, extra(3))
+  await userEvent.click(within(kaartDiv(0)).getByRole('button', { name: 'Meer eters' }))
+  await screen.findByText(/Bewaren mislukt/)
+  repo.conceptFout = null
+  await userEvent.click(screen.getByRole('button', { name: 'Opnieuw bewaren' }))
+  await screen.findByText(/✓ bewaard/)
+  expect(repo.conceptGeschreven).toHaveLength(1)
+})
+
+test('de ander bewaarde net ook: sha verouderd, daarna opnieuw geprobeerd met de nieuwste sha', async () => {
+  const repo = new NepRepo()
+  await toon(repo, extra(3))
+  repo.concept_ = { concept: { gerechten: [], sinds: '2026-11-21T11:59:00.000Z', door: 'Partner' }, sha: 'andermans' }
+  await userEvent.click(within(kaartDiv(0)).getByRole('button', { name: 'Meer eters' }))
+  await waitFor(() => expect(repo.conceptGeschreven).toHaveLength(1))
+  expect(repo.concept_!.concept.door).toBe('Menno')
+  expect(repo.concept_!.concept.gerechten).toHaveLength(3)
+})
+
+test('wegnavigeren voor het uitstel om is: het concept wordt alsnog meteen bewaard', async () => {
+  const repo = new NepRepo()
+  repo.recepten_ = [...repo.recepten_, ...extra(3)]
+  const r = await repo.recepten()
+  const data: AppData = { ...r, menu: null, instellingen: { huishouden: 2 }, keepStatus: null, concept: null }
+  const { unmount } = render(<Menu data={data} repo={repo} naam="Menno" herlaad={() => {}} bijgewerkt={() => {}} hash="#/" nu={() => NU} bewaarVertraging={60_000} />)
+  await userEvent.click(within(kaartDiv(0)).getByRole('button', { name: 'Meer eters' }))
+  expect(repo.conceptGeschreven).toHaveLength(0)
+  unmount()
+  await waitFor(() => expect(repo.conceptGeschreven).toHaveLength(1))
 })

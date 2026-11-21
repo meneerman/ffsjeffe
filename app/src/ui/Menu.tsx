@@ -4,7 +4,7 @@ import { leegmaken, markeerGegeten, vastzetten, zaadVoor } from '../core/menu'
 import type { Menu as MenuT, Recept } from '../core/types'
 import { pakOp, type PakOp } from '../core/pakop'
 import { aantalPorties } from '../core/schalen'
-import { dagenGeleden, kandidaten, stelVoor } from '../core/voorstel'
+import { dagenGeleden, kandidaten, stelVoor, vervang } from '../core/voorstel'
 import { VerouderdFout } from '../data/github'
 import type { SchermProps } from './App'
 import { Boodschappen } from './Boodschappen'
@@ -15,6 +15,8 @@ import { useConcept } from './useConcept'
 
 const UIT_MS = 420 // uitglijden + inklappen
 const TREK_DREMPEL = 70
+const VEEG_DREMPEL = 90
+const VEEG_MS = 260
 
 function geledenTekst(datum: string | undefined, nu: Date): string {
   if (!datum) return 'nog nooit'
@@ -33,11 +35,13 @@ export function receptMeta(r: Recept, laatstGegeten: Record<string, string>, nu:
   ].filter(Boolean).join(' · ')
 }
 
-export function Menu({ data, repo, naam, herlaad, bijgewerkt, nu = () => new Date() }: SchermProps & { nu?: () => Date }) {
+export function Menu({ data, repo, naam, herlaad, bijgewerkt, nu = () => new Date(), bewaarVertraging }: SchermProps & { nu?: () => Date; bewaarVertraging?: number }) {
   const menuNu = data.menu
   const menu: MenuT | null = menuNu?.menu ?? null
-  const concept = useConcept(data, menu)
+  const concept = useConcept(data, menu, repo, naam, bewaarVertraging)
   const { gerechten } = concept
+  const laatsteLijst = useRef(gerechten)
+  laatsteLijst.current = gerechten
   const perId = useMemo(() => Object.fromEntries(data.recepten.map((r) => [r.id, r])), [data.recepten])
   const laatstGegeten = menu?.laatstGegeten ?? {}
   const vastgezet = useMemo(() => new Map((menu?.gerechten ?? []).map((g) => [g.receptId, g])), [menu])
@@ -117,6 +121,23 @@ export function Menu({ data, repo, naam, herlaad, bijgewerkt, nu = () => new Dat
     }, UIT_MS))
   }
 
+  /**
+   * Volgende beste gerecht op dezelfde plek, met dezelfde eters en avonden. Geeft de uit te voeren wissel terug
+   * (de kaart wil eerst uitvliegen), of null als er geen alternatief is.
+   */
+  const [binnen, setBinnen] = useState<string | null>(null)
+  const probeerWissel = (id: string): (() => void) | null => {
+    const nieuw = vervang(laatsteLijst.current, id, data.recepten, laatstGegeten, data.verpakkingen, standaard, zaadVoor(menu), nu(), weggeveegd.current)
+    const nieuwId = nieuw?.find((g) => !laatsteLijst.current.some((o) => o.receptId === g.receptId))?.receptId
+    if (!nieuwId) return null
+    return () => {
+      weggeveegd.current.add(id)
+      concept.wijzig((huidig) => huidig.map((g) => (g.receptId === id ? { ...g, receptId: nieuwId, gegetenOp: null, vorigeKeer: null } : g)))
+      setBinnen(nieuwId)
+      timers.current.push(setTimeout(() => setBinnen(null), 500))
+    }
+  }
+
   const zet = (id: string, veld: 'eters' | 'avonden', n: number) =>
     concept.wijzig((huidig) => huidig.map((g) => (g.receptId === id ? { ...g, [veld]: Math.max(1, n) } : g)))
 
@@ -151,8 +172,20 @@ export function Menu({ data, repo, naam, herlaad, bijgewerkt, nu = () => new Dat
 
       <div className="status zacht klein">
         {menu ? `Vastgezet door ${menu.door}` : 'Nog niet vastgezet'}
-        {menu && concept.heeftConcept && ' · gewijzigd, nog niet vastgezet'}
       </div>
+      {concept.heeftConcept && (
+        <div className="status concept-status zacht klein" role="status">
+          <span>Concept van {concept.door ?? 'iemand'}, nog niet op Keep</span>
+          {concept.opslag.status === 'bezig' && <span> · bewaren…</span>}
+          {concept.opslag.status === 'bewaard' && <span className="bewaard"> · ✓ bewaard</span>}
+          {concept.opslag.status === 'mislukt' && (
+            <>
+              <span className="melding fout"> · Bewaren mislukt</span>{' '}
+              <button className="link-zacht" onClick={concept.bewaarOpnieuw}>Opnieuw bewaren</button>
+            </>
+          )}
+        </div>
+      )}
       <KeepStatusMelding key={menu?.vastgezetOp ?? 'geen'} repo={repo} vastgezetOp={menu?.vastgezetOp ?? null} begin={data.keepStatus} />
 
       {data.recepten.length === 0 ? (
@@ -172,6 +205,8 @@ export function Menu({ data, repo, naam, herlaad, bijgewerkt, nu = () => new Dat
               verdwijnt={verdwijnt.has(g.receptId)}
               bezig={bezig}
               verwijder={() => verwijder(g.receptId)}
+              probeerWissel={() => probeerWissel(g.receptId)}
+              binnen={binnen === g.receptId}
               tip={vastgezet.get(g.receptId)?.gegetenOp ? null : pakOp(perId[g.receptId], g, data.verpakkingen)}
               pasTipToe={(t: PakOp) => concept.wijzig((huidig) => huidig.map((x) => (x.receptId === g.receptId ? { ...x, eters: t.eters, avonden: t.avonden } : x)))}
               zetEters={(n: number) => zet(g.receptId, 'eters', n)}
@@ -245,13 +280,58 @@ export function Menu({ data, repo, naam, herlaad, bijgewerkt, nu = () => new Dat
 function GerechtKaart(p: {
   recept: Recept; eters: number; avonden: number; meta: string; gegetenOp: string | null; kanGegeten: boolean; nu: Date
   tip: PakOp | null; pasTipToe: (t: PakOp) => void
-  verdwijnt: boolean; bezig: boolean; verwijder: () => void; zetEters: (n: number) => void; zetAvonden: (n: number) => void; wisselGegeten: () => void
+  verdwijnt: boolean; bezig: boolean; verwijder: () => void; probeerWissel: () => (() => void) | null; binnen: boolean; zetEters: (n: number) => void; zetAvonden: (n: number) => void; wisselGegeten: () => void
 }) {
   const { recept: r } = p
   const [vraag, setVraag] = useState(false)
+
+  // opzij vegen = ander gerecht; de kaart vliegt weg en het nieuwe schuift erin (key = recept)
+  const [dx, setDx] = useState(0)
+  const [weg, setWeg] = useState<-1 | 1 | 0>(0)
+  const start = useRef<{ x: number; y: number } | null>(null)
+  const verplaatst = useRef(false)
+  const timer = useRef<ReturnType<typeof setTimeout>>()
+  useEffect(() => () => clearTimeout(timer.current), [])
+  const kanVegen = !p.gegetenOp && !vraag && !p.verdwijnt
+
+  const los = () => {
+    if (!start.current) return
+    start.current = null
+    if (Math.abs(dx) <= VEEG_DREMPEL) { setDx(0); return }
+    const toepas = p.probeerWissel()
+    if (!toepas) { setDx(0); return } // geen alternatief: terugveren
+    wegMet(dx < 0 ? -1 : 1, toepas)
+  }
+  const wegMet = (richting: -1 | 1, toepas: () => void) => {
+    setWeg(richting)
+    timer.current = setTimeout(toepas, VEEG_MS) // daarna vervangt een nieuwe kaart deze (andere key)
+  }
+  const x = weg ? weg * 420 : dx
+  const veegt = start.current !== null
+
   return (
-    <li data-testid="gerecht" className={`gerecht-rij${p.verdwijnt ? ' uit' : ''}${p.gegetenOp ? ' gegeten' : ''}`}>
-      <div className={`kaart gerecht${vraag ? ' vraagt' : ''}`}>
+    <li
+      data-testid="gerecht"
+      className={`gerecht-rij${p.verdwijnt ? ' uit' : ''}${p.gegetenOp ? ' gegeten' : ''}${p.binnen ? ' binnen' : ''}`}
+      onPointerDown={(e) => {
+        if (!kanVegen || weg || (e.target as HTMLElement).closest('button, a, input')) return
+        start.current = { x: e.clientX, y: e.clientY }
+        verplaatst.current = false
+      }}
+      onPointerMove={(e) => {
+        if (!start.current) return
+        const d = e.clientX - start.current.x
+        if (Math.abs(d) > 8) verplaatst.current = true
+        setDx(d)
+      }}
+      onPointerUp={los}
+      onPointerCancel={() => { start.current = null; setDx(0) }}
+      onClickCapture={(e) => { if (verplaatst.current) { e.preventDefault(); e.stopPropagation(); verplaatst.current = false } }}
+    >
+      <div
+        className={`kaart gerecht${vraag ? ' vraagt' : ''}${weg ? ' weggeveegd' : ''}`}
+        style={x ? { transform: `translateX(${x}px) rotate(${x / 40}deg)`, opacity: weg ? 0 : 1 - Math.min(0.5, Math.abs(x) / 400), transition: veegt ? 'none' : `transform ${VEEG_MS}ms var(--veer), opacity ${VEEG_MS}ms` } : undefined}
+      >
         {vraag ? (
           <div className="bevestig" role="group" aria-label={`${r.titel} verwijderen?`}>
             <span>Verwijderen?</span>
@@ -267,6 +347,7 @@ function GerechtKaart(p: {
                 <a className="titel" href={`#/recept/${encodeURIComponent(r.id)}`}>{r.titel}</a>
                 <div className="meta zacht">{p.gegetenOp ? `✓ gegeten ${geledenTekst(p.gegetenOp, p.nu)}` : p.meta}</div>
               </div>
+              {kanVegen && <button className="wissel-knop" aria-label={`Ander gerecht voor ${r.titel}`} onClick={() => { const toepas = p.probeerWissel(); if (toepas) wegMet(-1, toepas) }}>⇄</button>}
               <button className="verwijder-knop" aria-label={`Verwijder ${r.titel}`} onClick={() => setVraag(true)}>×</button>
             </div>
             {p.tip && (

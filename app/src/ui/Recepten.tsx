@@ -10,9 +10,9 @@ export const SOORT_NAAM: Record<Soort, string> = {
 const VOLGORDE: Soort[] = ['avondeten', 'voorgerecht', 'lunch', 'ontbijt', 'toetje', 'snack']
 
 /** Alle recepten, per soort, om er in één keer een aantal op het menu te zetten. */
-export function Recepten({ data }: SchermProps) {
+export function Recepten({ data, repo, naam }: SchermProps) {
   const menu = data.menu?.menu ?? null
-  const concept = useConcept(data, menu)
+  const concept = useConcept(data, menu, repo, naam)
   const opMenu = new Set(concept.gerechten.map((g) => g.receptId))
   const [filter, setFilter] = useState<Soort | 'alles'>('alles')
   const [alleenVriezer, setAlleenVriezer] = useState(false)

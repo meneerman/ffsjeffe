@@ -1,5 +1,5 @@
 import { expect, test } from 'vitest'
-import type { Menu } from '../core/types'
+import type { Concept, Menu } from '../core/types'
 import { leesVoorbeeld } from '../testhulp'
 import { DataRepo, TokenFout, VerouderdFout, naarBase64, vanBase64 } from './github'
 
@@ -110,4 +110,29 @@ test('vastzetten over een kapotte menu.json gebruikt de sha van dat bestand', as
   expect(await r.menu()).toBeNull()
   await r.zetMenu(MENU, null, 'x')
   expect(JSON.parse(verzoeken.at(-1)!.init!.body as string).sha).toBe('kapot-sha')
+})
+
+const CONCEPTPAD = 'contents/weekmenu/concept.json'
+const CONCEPT: Concept = { gerechten: [{ receptId: 'A', eters: 4, avonden: 1, gegetenOp: null, vorigeKeer: null }], sinds: '2026-11-21T10:00:00.000Z', door: 'Menno' }
+
+test('concept: null bij 404 of kapotte JSON, anders met sha', async () => {
+  expect(await repo({}).repo.concept()).toBeNull()
+  expect(await repo({ [`GET ${CONCEPTPAD}?ref=main`]: bestand('{kapot') }).repo.concept()).toBeNull()
+  expect(await repo({ [`GET ${CONCEPTPAD}?ref=main`]: bestand('{"gerechten": 3}') }).repo.concept()).toBeNull()
+  expect(await repo({ [`GET ${CONCEPTPAD}?ref=main`]: bestand(JSON.stringify(CONCEPT), 'c1') }).repo.concept()).toEqual({ concept: CONCEPT, sha: 'c1' })
+})
+
+test('zetConcept schrijft weekmenu/concept.json met sha en bericht, nooit menu.json', async () => {
+  const { repo: r, verzoeken } = repo({ [`PUT ${CONCEPTPAD.replace('?ref=main', '')}`]: { status: 200, body: { content: { sha: 'c2' } } } })
+  expect(await r.zetConcept(CONCEPT, 'c1', 'Concept van Menno')).toBe('c2')
+  expect(verzoeken).toHaveLength(1)
+  expect(verzoeken[0].url).toContain('contents/weekmenu/concept.json')
+  const body = JSON.parse(verzoeken[0].init!.body as string)
+  expect(body).toMatchObject({ sha: 'c1', branch: 'main', message: 'Concept van Menno' })
+  expect(JSON.parse(vanBase64(body.content))).toEqual(CONCEPT)
+})
+
+test('zetConcept: 409 of 422-over-sha is VerouderdFout', async () => {
+  await expect(repo({ [`PUT ${CONCEPTPAD}`]: { status: 409 } }).repo.zetConcept(CONCEPT, 'o', 'x')).rejects.toBeInstanceOf(VerouderdFout)
+  await expect(repo({ [`PUT ${CONCEPTPAD}`]: { status: 422, body: { message: '"sha" wasn\'t supplied.' } } }).repo.zetConcept(CONCEPT, null, 'x')).rejects.toBeInstanceOf(VerouderdFout)
 })

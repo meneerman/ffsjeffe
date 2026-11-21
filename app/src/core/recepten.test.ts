@@ -20,6 +20,27 @@ test('parseHoeveelheid', () => {
   expect(parseHoeveelheid('1/0')).toBeNull()
 })
 
+test('parseRegel leest een getal direct aan de eenheid', () => {
+  expect(parseRegel('400g pasta')).toEqual({ naam: 'pasta', hoeveelheid: 400, eenheid: 'g' })
+  expect(parseRegel('1,5kg aardappelen')).toEqual({ naam: 'aardappelen', hoeveelheid: 1.5, eenheid: 'kg' })
+  expect(parseRegel('500ml melk')).toEqual({ naam: 'melk', hoeveelheid: 500, eenheid: 'ml' })
+})
+
+test('parseRegel neemt bij een bereik het hoogste getal', () => {
+  expect(parseRegel('2-3 tomaten')).toEqual({ naam: 'tomaten', hoeveelheid: 3, eenheid: 'stuk' })
+  expect(parseRegel('2–3 el olie')).toEqual({ naam: 'olie', hoeveelheid: 3, eenheid: 'el' })
+})
+
+test('parseRegel geeft een fout bij een onleesbaar getal in plaats van stil de hoeveelheid te verliezen', () => {
+  for (const regel of ['1½ tl zout', '1 1/2 el olie', '200gram pasta', '400g']) {
+    expect(fout(parseRegel(regel)), regel).toBe(true)
+  }
+})
+
+test('parseRegel laat een naam zonder getal ongemoeid', () => {
+  expect(parseRegel('zout')).toEqual({ naam: 'zout', hoeveelheid: null, eenheid: null })
+})
+
 test('parseRegel', () => {
   expect(parseRegel('400 g pasta')).toEqual({ naam: 'pasta', hoeveelheid: 400, eenheid: 'g' })
   expect(parseRegel('2 zalmfilet')).toEqual({ naam: 'zalmfilet', hoeveelheid: 2, eenheid: 'stuk' })

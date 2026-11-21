@@ -8,18 +8,45 @@ export function sleutel(naam: string): string {
 
 const VASTE_SYNONIEMEN: Record<string, string> = { teentje: 'teen', snufje: 'snuf' }
 
-/** Eén ingrediëntregel: "<hoeveelheid> <eenheid> <naam>" | "<hoeveelheid> <naam>" | "<naam>". */
+/**
+ * Eén ingrediëntregel: "<hoeveelheid> <eenheid> <naam>" | "<hoeveelheid> <naam>" | "<naam>".
+ * Ook "400g pasta" (getal direct aan de eenheid) en "2-3 tomaten" (bereik → hoogste getal) worden gelezen.
+ * Een regel die met een cijfer begint maar niet te lezen is, geeft een fout: nooit stil zonder hoeveelheid doorgaan.
+ */
 export function parseRegel(tekst: string): Ingredient | { fout: string } {
   const delen = tekst.trim().split(/\s+/).filter(Boolean)
   if (delen.length === 0) return { fout: 'lege regel' }
-  const h = parseHoeveelheid(delen[0])
-  if (h === null) return { naam: delen.join(' '), hoeveelheid: null, eenheid: null }
-  const tweede = delen[1]?.toLowerCase()
-  const isEenheid = tweede !== undefined && (EENHEDEN as readonly string[]).includes(tweede)
-  const naam = delen.slice(isEenheid ? 2 : 1).join(' ')
+  const onleesbaar = { fout: `"${tekst.trim()}" begint met een getal dat niet te lezen is; schrijf "<hoeveelheid> <eenheid> <naam>"` }
+  const isEenheidWoord = (w: string | undefined): w is string => w !== undefined && (EENHEDEN as readonly string[]).includes(w.toLowerCase())
+
+  let h = parseHoeveelheid(delen[0])
+  let eenheid: string | null = null
+  let naamStart = 1
+  if (h === null) {
+    const aanelkaar = /^(\d+(?:[.,]\d+)?)([a-zA-Z]+)$/.exec(delen[0])
+    const bereik = /^(\d+)[-–](\d+)$/.exec(delen[0])
+    if (aanelkaar && isEenheidWoord(aanelkaar[2])) {
+      h = parseHoeveelheid(aanelkaar[1])
+      eenheid = aanelkaar[2].toLowerCase()
+    } else if (bereik) {
+      h = Math.max(Number(bereik[1]), Number(bereik[2]))
+    } else if (/^\d/.test(delen[0])) {
+      return onleesbaar
+    } else {
+      return { naam: delen.join(' '), hoeveelheid: null, eenheid: null }
+    }
+  }
+  if (eenheid === null) {
+    if (isEenheidWoord(delen[1])) {
+      eenheid = delen[1].toLowerCase()
+      naamStart = 2
+    } else if (delen[1] !== undefined && /^\d/.test(delen[1])) {
+      return onleesbaar
+    }
+  }
+  const naam = delen.slice(naamStart).join(' ')
   if (!naam) return { fout: `"${tekst.trim()}" heeft geen naam` }
-  const eenheid = isEenheid ? VASTE_SYNONIEMEN[tweede] ?? tweede : 'stuk'
-  return { naam, hoeveelheid: h, eenheid }
+  return { naam, hoeveelheid: h, eenheid: eenheid ? VASTE_SYNONIEMEN[eenheid] ?? eenheid : 'stuk' }
 }
 
 /** Splitst een notitie in frontmatter (geparsed) en de rest. Gooit bij kapotte YAML. */

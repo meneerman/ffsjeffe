@@ -1,5 +1,6 @@
 ---
 soort: avondeten    # avondeten, voorgerecht, lunch, ontbijt, toetje of snack
+invriezen: nee      # ja als het bereide gerecht goed in te vriezen is (zet dan in de notities hoe)
 porties: 4          # wat de hoeveelheden hieronder maken, zoals de bron het zegt
 tijd: 30
 # avonden: 3        # alleen bij een batchgerecht: standaard aantal avonden (4 eters × avonden ≈ porties); in de app aan te passen

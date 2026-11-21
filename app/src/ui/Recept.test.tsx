@@ -1,7 +1,7 @@
 import { cleanup, render, screen, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { afterEach, beforeEach, expect, test, vi } from 'vitest'
-import { gerecht } from '../core/testdata'
+import { gerecht, ing, recept } from '../core/testdata'
 import type { Menu } from '../core/types'
 import App from './App'
 import { NepRepo, PASTA, WRAPS } from './nepRepo'
@@ -17,11 +17,11 @@ async function data(menu: Menu | null = MENU): Promise<AppData> {
   const repo = new NepRepo()
   return { ...(await repo.recepten()), menu: menu ? { menu, sha: 's' } : null, instellingen: { huishouden: 2 }, keepStatus: null }
 }
-const recept = (d: AppData, id = PASTA) => d.recepten.find((r) => r.id === id)!
+const recept2 = (d: AppData, id = PASTA) => d.recepten.find((r) => r.id === id)!
 
 test('kop, chips, benodigdheden, geschaalde ingrediënten, voorbereiding en bereiding', async () => {
   const d = await data()
-  render(<ReceptPagina recept={recept(d)} data={d} />)
+  render(<ReceptPagina recept={recept2(d)} data={d} />)
   expect(screen.getByRole('heading', { level: 1 }).textContent).toBe(PASTA)
   expect(screen.getByText('25 min')).toBeTruthy()
   expect(screen.getByLabelText('eters').textContent).toBe('3')
@@ -34,7 +34,7 @@ test('kop, chips, benodigdheden, geschaalde ingrediënten, voorbereiding en bere
 
 test('stappen afvinken: huidige stap uitgelicht, voortgang, onthouden', async () => {
   const d = await data()
-  const { unmount } = render(<ReceptPagina recept={recept(d)} data={d} />)
+  const { unmount } = render(<ReceptPagina recept={recept2(d)} data={d} />)
   expect(screen.getByText('Stap 1 van 6')).toBeTruthy()
   const stappen = () => screen.getAllByRole('button', { name: /^Stap \d+:/ })
   expect(stappen()[0].getAttribute('aria-current')).toBe('step')
@@ -43,7 +43,7 @@ test('stappen afvinken: huidige stap uitgelicht, voortgang, onthouden', async ()
   expect(stappen()[1].getAttribute('aria-current')).toBe('step')
   expect(screen.getByText('Stap 2 van 6')).toBeTruthy()
   unmount()
-  render(<ReceptPagina recept={recept(d)} data={d} />)
+  render(<ReceptPagina recept={recept2(d)} data={d} />)
   expect(screen.getByText('Stap 2 van 6')).toBeTruthy()
   for (const s of stappen().slice(1)) await userEvent.click(s)
   expect(screen.getByText('Klaar. Eet smakelijk!')).toBeTruthy()
@@ -51,7 +51,7 @@ test('stappen afvinken: huidige stap uitgelicht, voortgang, onthouden', async ()
 
 test('− + past het menu-concept aan', async () => {
   const d = await data()
-  render(<ReceptPagina recept={recept(d)} data={d} />)
+  render(<ReceptPagina recept={recept2(d)} data={d} />)
   await userEvent.click(screen.getByRole('button', { name: 'Meer eters' }))
   expect(screen.getByText('400 g pasta')).toBeTruthy()
   const c = JSON.parse(localStorage.getItem('ffsjeffe.concept')!)
@@ -60,7 +60,7 @@ test('− + past het menu-concept aan', async () => {
 
 test('recept niet op het menu: standaard eters, concept blijft onaangeroerd', async () => {
   const d = await data()
-  render(<ReceptPagina recept={recept(d, WRAPS)} data={d} />)
+  render(<ReceptPagina recept={recept2(d, WRAPS)} data={d} />)
   expect(screen.getByLabelText('eters').textContent).toBe('2')
   await userEvent.click(screen.getByRole('button', { name: 'Meer eters' }))
   expect(screen.getByLabelText('eters').textContent).toBe('3')
@@ -69,24 +69,24 @@ test('recept niet op het menu: standaard eters, concept blijft onaangeroerd', as
 
 test('afvinken wordt doorgestreept en onthouden per ronde', async () => {
   const d = await data()
-  const { unmount } = render(<ReceptPagina recept={recept(d)} data={d} />)
+  const { unmount } = render(<ReceptPagina recept={recept2(d)} data={d} />)
   await userEvent.click(screen.getByRole('checkbox', { name: '300 g pasta' }))
   expect((screen.getByRole('checkbox', { name: '300 g pasta' }) as HTMLInputElement).checked).toBe(true)
   unmount()
-  render(<ReceptPagina recept={recept(d)} data={d} />)
+  render(<ReceptPagina recept={recept2(d)} data={d} />)
   expect((screen.getByRole('checkbox', { name: '300 g pasta' }) as HTMLInputElement).checked).toBe(true)
   cleanup()
   const nieuweRonde = await data({ ...MENU, ronde: 'R2' })
-  render(<ReceptPagina recept={recept(nieuweRonde)} data={nieuweRonde} />)
+  render(<ReceptPagina recept={recept2(nieuweRonde)} data={nieuweRonde} />)
   expect((screen.getByRole('checkbox', { name: '300 g pasta' }) as HTMLInputElement).checked).toBe(false)
 })
 
 test('bronlink alleen bij http(s)', async () => {
   const d = await data()
-  render(<ReceptPagina recept={recept(d)} data={d} />)
+  render(<ReceptPagina recept={recept2(d)} data={d} />)
   expect(screen.getByRole('link', { name: /Origineel recept/ }).getAttribute('href')).toBe('https://example.com/pasta-zalm')
   cleanup()
-  render(<ReceptPagina recept={recept(d, WRAPS)} data={d} />)
+  render(<ReceptPagina recept={recept2(d, WRAPS)} data={d} />)
   expect(screen.queryByRole('link', { name: /Origineel recept/ })).toBeNull()
 })
 
@@ -96,7 +96,7 @@ test('scherm blijft aan: aangevraagd, label zichtbaar, opnieuw na terugkeren, vr
   const request = vi.fn().mockResolvedValue(lock)
   vi.stubGlobal('navigator', { ...navigator, wakeLock: { request } })
   const d = await data()
-  const { unmount } = render(<ReceptPagina recept={recept(d)} data={d} />)
+  const { unmount } = render(<ReceptPagina recept={recept2(d)} data={d} />)
   await vi.waitFor(() => expect(request).toHaveBeenCalledWith('screen'))
   expect(await screen.findByText('scherm blijft aan')).toBeTruthy()
   lock.released = true // de browser geeft hem vrij als je de app even verlaat
@@ -110,7 +110,7 @@ test('scherm blijft aan: aangevraagd, label zichtbaar, opnieuw na terugkeren, vr
 test('zonder wake lock geen fout', async () => {
   vi.stubGlobal('navigator', { ...navigator, wakeLock: undefined })
   const d = await data()
-  render(<ReceptPagina recept={recept(d)} data={d} />)
+  render(<ReceptPagina recept={recept2(d)} data={d} />)
   expect(screen.getByRole('heading', { level: 1 })).toBeTruthy()
 })
 
@@ -124,4 +124,23 @@ test('app toont de kookpagina via #/recept/<titel> en onbekend recept netjes', a
   render(<App maakRepo={() => new NepRepo()} />)
   expect(await screen.findByText(/Recept niet gevonden/)).toBeTruthy()
   location.hash = ''
+})
+
+test('batchgerecht: chip toont 12 porties, hoeveelheden kloppen met het recept', async () => {
+  const repo = new NepRepo()
+  repo.recepten_.push(recept('Bolognesesaus', [ing('half om half gehakt', 750, 'g')], { porties: 12, avonden: 3, stappen: ['Bak {750 g} gehakt 8 min.'] }))
+  const d: AppData = { ...(await repo.recepten()), menu: { menu: { ...MENU, gerechten: [gerecht('Bolognesesaus', 4)] }, sha: 's' }, instellingen: { huishouden: 4 }, keepStatus: null }
+  render(<ReceptPagina recept={recept2(d, 'Bolognesesaus')} data={d} />)
+  expect(screen.getByText('12 porties · 3 avonden')).toBeTruthy()
+  expect(screen.getByText('750 g half om half gehakt')).toBeTruthy()
+  expect(screen.getByText('Bak 750 g gehakt 8 min.')).toBeTruthy()
+  await userEvent.click(screen.getByRole('button', { name: 'Minder eters' }))
+  expect(screen.getByText('9 porties · 3 avonden')).toBeTruthy()
+  expect(screen.getByText('563 g half om half gehakt')).toBeTruthy()
+})
+
+test('gewoon gerecht (1 avond) toont geen porties-chip', async () => {
+  const d = await data()
+  render(<ReceptPagina recept={recept2(d)} data={d} />)
+  expect(screen.queryByText(/porties/)).toBeNull()
 })

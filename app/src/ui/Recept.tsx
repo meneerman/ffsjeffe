@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { schaalfactor } from '../core/boodschappen'
-import { schaalStap, toonIngredient } from '../core/schalen'
+import { aantalPorties, schaalStap, toonIngredient } from '../core/schalen'
 import type { Recept } from '../core/types'
 import { lees, schrijf } from './opslag'
 import { useConcept } from './useConcept'
@@ -74,7 +74,7 @@ export function ReceptPagina({ recept: r, data }: { recept: Recept; data: AppDat
       <h1 className="kop kook-kop">{r.titel}</h1>
       <div className="chips">
         {r.tijdMinuten > 0 && <span className="chip">{r.tijdMinuten} min</span>}
-        {r.avonden > 1 && <span className="chip">{r.avonden} avonden</span>}
+        {r.avonden > 1 && <span className="chip">{aantalPorties(r, eters)} porties · {r.avonden} avonden</span>}
         <span className="chip accent eters-chip">
           <button aria-label="Minder eters" onClick={() => zetEters(eters - 1)} disabled={eters <= 1}>−</button>
           <span aria-label="eters">{eters}</span>

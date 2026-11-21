@@ -2,6 +2,7 @@ import { useEffect, useMemo, useRef, useState } from 'react'
 import { behoeften, boodschappenRegels } from '../core/boodschappen'
 import { leegmaken, markeerGegeten, vastzetten, zaadVoor } from '../core/menu'
 import type { Menu as MenuT, Recept } from '../core/types'
+import { aantalPorties } from '../core/schalen'
 import { dagenGeleden, kandidaten, stelVoor } from '../core/voorstel'
 import { VerouderdFout } from '../data/github'
 import type { SchermProps } from './App'
@@ -19,8 +20,12 @@ function geledenTekst(datum: string | undefined, nu: Date): string {
   return d <= 0 ? 'vandaag' : d === 1 ? 'gisteren' : `${d} dagen geleden`
 }
 
-export function receptMeta(r: Recept, laatstGegeten: Record<string, string>, nu: Date): string {
-  return [r.tijdMinuten > 0 && `${r.tijdMinuten} min`, r.avonden > 1 && `${r.avonden} avonden`, geledenTekst(laatstGegeten[r.id], nu)].filter(Boolean).join(' · ')
+export function receptMeta(r: Recept, laatstGegeten: Record<string, string>, nu: Date, eters: number): string {
+  return [
+    r.tijdMinuten > 0 && `${r.tijdMinuten} min`,
+    r.avonden > 1 && `${aantalPorties(r, eters)} porties (${r.avonden} avonden)`,
+    geledenTekst(laatstGegeten[r.id], nu),
+  ].filter(Boolean).join(' · ')
 }
 
 export function Menu({ data, repo, naam, herlaad, bijgewerkt, nu = () => new Date() }: SchermProps & { nu?: () => Date }) {
@@ -150,7 +155,7 @@ export function Menu({ data, repo, naam, herlaad, bijgewerkt, nu = () => new Dat
               key={g.receptId}
               recept={perId[g.receptId]}
               eters={g.eters}
-              meta={receptMeta(perId[g.receptId], laatstGegeten, nu())}
+              meta={receptMeta(perId[g.receptId], laatstGegeten, nu(), g.eters)}
               gegetenOp={vastgezet.get(g.receptId)?.gegetenOp ?? null}
               kanGegeten={vastgezet.has(g.receptId)}
               nu={nu()}
@@ -196,7 +201,7 @@ export function Menu({ data, repo, naam, herlaad, bijgewerkt, nu = () => new Dat
       {toevoegen && (
         <Toevoegen
           opties={kandidaten(gerechten, data.recepten, laatstGegeten, data.verpakkingen, standaard, zaadVoor(menu), nu())}
-          meta={(r) => receptMeta(r, laatstGegeten, nu())}
+          meta={(r) => receptMeta(r, laatstGegeten, nu(), standaard)}
           sluit={() => setToevoegen(false)}
           kies={(r) => {
             concept.wijzig((huidig) => huidig.some((g) => g.receptId === r.id) ? huidig : [...huidig, { receptId: r.id, eters: standaard, gegetenOp: null, vorigeKeer: null }])

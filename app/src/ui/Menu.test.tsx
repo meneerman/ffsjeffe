@@ -257,3 +257,13 @@ test('Nieuw voorstel geeft andere gerechten dan net weggeveegd', async () => {
   expect(kaarten()).toHaveLength(3)
   expect(titels().sort()).not.toEqual([...voor].sort())
 })
+
+test('batchgerecht toont het echte aantal porties (eters × avonden)', async () => {
+  const repo = new NepRepo()
+  const bolo = recept('Bolognesesaus', [ing('gehakt', 750, 'g')], { porties: 12, avonden: 3 })
+  repo.menu_ = { menu: menu([gerecht('Bolognesesaus', 4)]), sha: 's' }
+  await toon(repo, [bolo])
+  expect(screen.getByText(/12 porties \(3 avonden\)/)).toBeTruthy()
+  await userEvent.click(screen.getByRole('button', { name: 'Meer eters' }))
+  expect(screen.getByText(/15 porties \(3 avonden\)/)).toBeTruthy()
+})

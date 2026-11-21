@@ -126,17 +126,30 @@ test('app toont de kookpagina via #/recept/<titel> en onbekend recept netjes', a
   location.hash = ''
 })
 
-test('batchgerecht: chip toont 12 porties, hoeveelheden kloppen met het recept', async () => {
+test('batchgerecht: porties, eters en avonden los te plussen, hoeveelheden kloppen', async () => {
   const repo = new NepRepo()
   repo.recepten_.push(recept('Bolognesesaus', [ing('half om half gehakt', 750, 'g')], { porties: 12, avonden: 3, stappen: ['Bak {750 g} gehakt 8 min.'] }))
-  const d: AppData = { ...(await repo.recepten()), menu: { menu: { ...MENU, gerechten: [gerecht('Bolognesesaus', 4)] }, sha: 's' }, instellingen: { huishouden: 4 }, keepStatus: null }
+  const d: AppData = { ...(await repo.recepten()), menu: { menu: { ...MENU, gerechten: [gerecht('Bolognesesaus', 4, { avonden: 3 })] }, sha: 's' }, instellingen: { huishouden: 4 }, keepStatus: null }
   render(<ReceptPagina recept={recept2(d, 'Bolognesesaus')} data={d} />)
-  expect(screen.getByText('12 porties · 3 avonden')).toBeTruthy()
+  expect(screen.getByText('12 porties')).toBeTruthy()
   expect(screen.getByText('750 g half om half gehakt')).toBeTruthy()
   expect(screen.getByText('Bak 750 g gehakt 8 min.')).toBeTruthy()
+  await userEvent.click(screen.getByRole('button', { name: 'Minder avonden' }))
+  expect(screen.getByText('8 porties')).toBeTruthy()
+  expect(screen.getByText('500 g half om half gehakt')).toBeTruthy()
   await userEvent.click(screen.getByRole('button', { name: 'Minder eters' }))
-  expect(screen.getByText('9 porties · 3 avonden')).toBeTruthy()
-  expect(screen.getByText('563 g half om half gehakt')).toBeTruthy()
+  expect(screen.getByText('6 porties')).toBeTruthy()
+  expect(JSON.parse(localStorage.getItem('ffsjeffe.concept')!).gerechten[0]).toMatchObject({ eters: 3, avonden: 2 })
+})
+
+test('recept niet op het menu: begint op de standaard avonden van het recept', async () => {
+  const repo = new NepRepo()
+  repo.recepten_.push(recept('Soep', [ing('linzen', 400, 'g')], { porties: 8, avonden: 2 }))
+  const d: AppData = { ...(await repo.recepten()), menu: null, instellingen: { huishouden: 4 }, keepStatus: null }
+  render(<ReceptPagina recept={recept2(d, 'Soep')} data={d} />)
+  expect(screen.getByText('8 porties')).toBeTruthy()
+  expect(screen.getByLabelText('avonden').textContent).toBe('2')
+  expect(localStorage.getItem('ffsjeffe.concept')).toBeNull()
 })
 
 test('gewoon gerecht (1 avond) toont geen porties-chip', async () => {

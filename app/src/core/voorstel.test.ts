@@ -15,7 +15,8 @@ test('dagenGeleden in kalenderdagen', () => {
 test('stelt standaard 3 gerechten voor met standaard eters', () => {
   const v = stelVoor(reeks(10), {}, {}, 2, 'zaad', NU)
   expect(v).toHaveLength(3)
-  expect(v.every((g) => g.eters === 2 && g.gegetenOp === null && g.vorigeKeer === null)).toBe(true)
+  expect(v.every((g) => g.eters === 2 && g.avonden === 1 && g.gegetenOp === null && g.vorigeKeer === null)).toBe(true)
+  expect(stelVoor([recept('Batch', [], { avonden: 3 })], {}, {}, 4, 'z', NU)).toEqual([{ receptId: 'Batch', eters: 4, avonden: 3, gegetenOp: null, vorigeKeer: null }])
   expect(new Set(v.map((g) => g.receptId)).size).toBe(3)
 })
 

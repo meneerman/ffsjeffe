@@ -258,12 +258,58 @@ test('Nieuw voorstel geeft andere gerechten dan net weggeveegd', async () => {
   expect(titels().sort()).not.toEqual([...voor].sort())
 })
 
-test('batchgerecht toont het echte aantal porties (eters × avonden)', async () => {
+test('batchgerecht toont porties; eters en avonden zijn los te plussen', async () => {
   const repo = new NepRepo()
   const bolo = recept('Bolognesesaus', [ing('gehakt', 750, 'g')], { porties: 12, avonden: 3 })
-  repo.menu_ = { menu: menu([gerecht('Bolognesesaus', 4)]), sha: 's' }
+  repo.menu_ = { menu: menu([gerecht('Bolognesesaus', 4, { avonden: 3 })]), sha: 's' }
   await toon(repo, [bolo])
-  expect(screen.getByText(/12 porties \(3 avonden\)/)).toBeTruthy()
+  expect(screen.getByText(/12 porties/)).toBeTruthy()
+  expect(screen.getByLabelText('avonden').textContent).toBe('3')
+  await userEvent.click(screen.getByRole('button', { name: 'Meer avonden' }))
+  expect(screen.getByText(/16 porties/)).toBeTruthy()
   await userEvent.click(screen.getByRole('button', { name: 'Meer eters' }))
-  expect(screen.getByText(/15 porties \(3 avonden\)/)).toBeTruthy()
+  expect(screen.getByText(/20 porties/)).toBeTruthy()
+})
+
+test('avonden: minimaal 1, en één avond toont geen porties-regel', async () => {
+  const repo = new NepRepo()
+  repo.menu_ = { menu: menu([gerecht(PASTA, 4, { avonden: 2 })]), sha: 's' }
+  await toon(repo)
+  await userEvent.click(screen.getByRole('button', { name: 'Minder avonden' }))
+  expect(screen.getByLabelText('avonden').textContent).toBe('1')
+  expect(screen.queryByText(/porties/)).toBeNull()
+  expect((screen.getByRole('button', { name: 'Minder avonden' }) as HTMLButtonElement).disabled).toBe(true)
+})
+
+test('avonden wijzigen verandert de boodschappen', async () => {
+  const repo = new NepRepo()
+  repo.menu_ = { menu: menu([gerecht(PASTA, 4, { avonden: 1 })]), sha: 's' }
+  await toon(repo)
+  await userEvent.click(screen.getByRole('button', { name: /Boodschappen/ }))
+  expect(screen.getByText('Pasta 400 g')).toBeTruthy()
+  await userEvent.click(screen.getByRole('button', { name: 'Meer avonden' }))
+  expect(screen.getByText('Pasta 800 g')).toBeTruthy()
+})
+
+test('voorstel en erbij zetten nemen de standaard avonden van het recept over', async () => {
+  const repo = new NepRepo()
+  const bolo = recept('Bolognesesaus', [ing('gehakt', 750, 'g')], { porties: 12, avonden: 3 })
+  await toon(repo, [...extra(2), bolo]) // 2 voorbeeldrecepten + 2 extra + bolo = 5
+  const boloKaart = () => kaarten().find((k) => within(k).queryByRole('link', { name: 'Bolognesesaus' }))
+  for (let i = 0; i < 4 && !boloKaart(); i++) {
+    await userEvent.click(screen.getByRole('button', { name: /Gerecht erbij/ }))
+    await userEvent.click(within(screen.getByRole('dialog')).getByRole('button', { name: 'Erbij' }))
+    await waitFor(() => expect(kaarten().length).toBe(4 + i))
+  }
+  expect(within(boloKaart()!).getByLabelText('avonden').textContent).toBe('3')
+})
+
+test('oud menu zonder avonden valt terug op de standaard van het recept', async () => {
+  const repo = new NepRepo()
+  const bolo = recept('Bolognesesaus', [ing('gehakt', 750, 'g')], { porties: 12, avonden: 3 })
+  const oud = { receptId: 'Bolognesesaus', eters: 4, gegetenOp: null, vorigeKeer: null } as unknown as ReturnType<typeof gerecht>
+  repo.menu_ = { menu: menu([oud]), sha: 's' }
+  await toon(repo, [bolo])
+  expect(screen.getByLabelText('avonden').textContent).toBe('3')
+  expect(screen.getByText(/12 porties/)).toBeTruthy()
 })

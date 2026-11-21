@@ -28,7 +28,7 @@ export function restjes(gerechten: Gerecht[], recepten: Record<string, Recept>, 
 }
 
 function restdekking(r: Recept, rest: Record<string, number>, verpakkingen: Verpakkingen, eters: number): number {
-  const factor = schaalfactor(r, eters)
+  const factor = schaalfactor(r, eters, r.avonden)
   let dekking = 0
   for (const i of r.ingredienten) {
     const k = sleutel(i.naam)
@@ -93,7 +93,7 @@ export function stelVoor(
   while (gerechten.length < aantal) {
     const beste = kandidaten(gerechten, recepten, laatstGegeten, verpakkingen, eters, seed, vandaag)[0]
     if (!beste) break
-    gerechten.push({ receptId: beste.id, eters, gegetenOp: null, vorigeKeer: null })
+    gerechten.push({ receptId: beste.id, eters, avonden: beste.avonden, gegetenOp: null, vorigeKeer: null })
   }
   return gerechten
 }

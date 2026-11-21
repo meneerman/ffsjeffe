@@ -9,6 +9,7 @@ import type { SchermProps } from './App'
 import { Boodschappen } from './Boodschappen'
 import { KeepStatusMelding } from './KeepStatus'
 import { Toevoegen } from './Toevoegen'
+import { Stapper } from './Stapper'
 import { useConcept } from './useConcept'
 
 const UIT_MS = 420 // uitglijden + inklappen
@@ -20,10 +21,11 @@ function geledenTekst(datum: string | undefined, nu: Date): string {
   return d <= 0 ? 'vandaag' : d === 1 ? 'gisteren' : `${d} dagen geleden`
 }
 
-export function receptMeta(r: Recept, laatstGegeten: Record<string, string>, nu: Date, eters: number): string {
+/** "25 min · 12 porties · 18 dagen geleden"; porties alleen bij meer dan één avond. */
+export function receptMeta(r: Recept, laatstGegeten: Record<string, string>, nu: Date, eters: number, avonden: number): string {
   return [
     r.tijdMinuten > 0 && `${r.tijdMinuten} min`,
-    r.avonden > 1 && `${aantalPorties(r, eters)} porties (${r.avonden} avonden)`,
+    avonden > 1 && `${aantalPorties(eters, avonden)} porties`,
     geledenTekst(laatstGegeten[r.id], nu),
   ].filter(Boolean).join(' · ')
 }
@@ -112,7 +114,8 @@ export function Menu({ data, repo, naam, herlaad, bijgewerkt, nu = () => new Dat
     }, UIT_MS))
   }
 
-  const zetEters = (id: string, eters: number) => concept.wijzig((huidig) => huidig.map((g) => (g.receptId === id ? { ...g, eters: Math.max(1, eters) } : g)))
+  const zet = (id: string, veld: 'eters' | 'avonden', n: number) =>
+    concept.wijzig((huidig) => huidig.map((g) => (g.receptId === id ? { ...g, [veld]: Math.max(1, n) } : g)))
 
   // pull-to-refresh
   const trekStart = useRef<number | null>(null)
@@ -155,14 +158,16 @@ export function Menu({ data, repo, naam, herlaad, bijgewerkt, nu = () => new Dat
               key={g.receptId}
               recept={perId[g.receptId]}
               eters={g.eters}
-              meta={receptMeta(perId[g.receptId], laatstGegeten, nu(), g.eters)}
+              avonden={g.avonden}
+              meta={receptMeta(perId[g.receptId], laatstGegeten, nu(), g.eters, g.avonden)}
               gegetenOp={vastgezet.get(g.receptId)?.gegetenOp ?? null}
               kanGegeten={vastgezet.has(g.receptId)}
               nu={nu()}
               verdwijnt={verdwijnt.has(g.receptId)}
               bezig={bezig}
               verwijder={() => verwijder(g.receptId)}
-              wijzigEters={(d: number) => zetEters(g.receptId, g.eters + d)}
+              zetEters={(n: number) => zet(g.receptId, 'eters', n)}
+              zetAvonden={(n: number) => zet(g.receptId, 'avonden', n)}
               wisselGegeten={() => wisselGegeten(perId[g.receptId])}
             />
           ))}
@@ -201,10 +206,10 @@ export function Menu({ data, repo, naam, herlaad, bijgewerkt, nu = () => new Dat
       {toevoegen && (
         <Toevoegen
           opties={kandidaten(gerechten, data.recepten, laatstGegeten, data.verpakkingen, standaard, zaadVoor(menu), nu())}
-          meta={(r) => receptMeta(r, laatstGegeten, nu(), standaard)}
+          meta={(r) => receptMeta(r, laatstGegeten, nu(), standaard, r.avonden)}
           sluit={() => setToevoegen(false)}
           kies={(r) => {
-            concept.wijzig((huidig) => huidig.some((g) => g.receptId === r.id) ? huidig : [...huidig, { receptId: r.id, eters: standaard, gegetenOp: null, vorigeKeer: null }])
+            concept.wijzig((huidig) => huidig.some((g) => g.receptId === r.id) ? huidig : [...huidig, { receptId: r.id, eters: standaard, avonden: r.avonden, gegetenOp: null, vorigeKeer: null }])
             setToevoegen(false)
           }}
         />
@@ -227,8 +232,8 @@ export function Menu({ data, repo, naam, herlaad, bijgewerkt, nu = () => new Dat
 }
 
 function GerechtKaart(p: {
-  recept: Recept; eters: number; meta: string; gegetenOp: string | null; kanGegeten: boolean; nu: Date
-  verdwijnt: boolean; bezig: boolean; verwijder: () => void; wijzigEters: (d: number) => void; wisselGegeten: () => void
+  recept: Recept; eters: number; avonden: number; meta: string; gegetenOp: string | null; kanGegeten: boolean; nu: Date
+  verdwijnt: boolean; bezig: boolean; verwijder: () => void; zetEters: (n: number) => void; zetAvonden: (n: number) => void; wisselGegeten: () => void
 }) {
   const { recept: r } = p
   const [vraag, setVraag] = useState(false)
@@ -245,22 +250,21 @@ function GerechtKaart(p: {
           </div>
         ) : (
           <>
-            <div className="gerecht-tekst">
-              <a className="titel" href={`#/recept/${encodeURIComponent(r.id)}`}>{r.titel}</a>
-              <div className="meta zacht">{p.gegetenOp ? `✓ gegeten ${geledenTekst(p.gegetenOp, p.nu)}` : p.meta}</div>
-            </div>
-            <div className="gerecht-acties">
-              <div className="eters" role="group" aria-label="aantal eters">
-                <button aria-label="Minder eters" onClick={() => p.wijzigEters(-1)} disabled={p.eters <= 1}>−</button>
-                <span aria-label="eters">{p.eters}</span>
-                <button aria-label="Meer eters" onClick={() => p.wijzigEters(1)}>+</button>
+            <div className="gerecht-kop">
+              <div className="gerecht-tekst">
+                <a className="titel" href={`#/recept/${encodeURIComponent(r.id)}`}>{r.titel}</a>
+                <div className="meta zacht">{p.gegetenOp ? `✓ gegeten ${geledenTekst(p.gegetenOp, p.nu)}` : p.meta}</div>
               </div>
+              <button className="verwijder-knop" aria-label={`Verwijder ${r.titel}`} onClick={() => setVraag(true)}>×</button>
+            </div>
+            <div className="gerecht-bediening">
+              <Stapper naam="eters" icoon="👤" waarde={p.eters} wijzig={p.zetEters} klein />
+              <Stapper naam="avonden" icoon="☾" waarde={p.avonden} wijzig={p.zetAvonden} klein />
               {p.kanGegeten && (
                 <button className={`gegeten-knop${p.gegetenOp ? ' aan' : ''}`} aria-label={`${r.titel} gegeten`} aria-pressed={!!p.gegetenOp} onClick={p.wisselGegeten} disabled={p.bezig}>
                   ✓<span className="label"> Gegeten</span>
                 </button>
               )}
-              <button className="verwijder-knop" aria-label={`Verwijder ${r.titel}`} onClick={() => setVraag(true)}>×</button>
             </div>
           </>
         )}

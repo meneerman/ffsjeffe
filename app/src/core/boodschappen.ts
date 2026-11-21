@@ -5,8 +5,8 @@ import type { Gerecht, Recept, Verpakkingen } from './types'
 /** Opgeteld over het menu, in basiseenheid. hoeveelheid null = naar smaak. */
 export type Behoefte = { naam: string; hoeveelheid: number | null; eenheid: string | null }
 
-export function schaalfactor(recept: Recept, eters: number): number {
-  return (eters * recept.avonden) / recept.porties
+export function schaalfactor(recept: Recept, eters: number, avonden: number): number {
+  return (eters * avonden) / recept.porties
 }
 
 export function behoeften(gerechten: Gerecht[], recepten: Record<string, Recept>): Behoefte[] {
@@ -14,7 +14,7 @@ export function behoeften(gerechten: Gerecht[], recepten: Record<string, Recept>
   for (const g of gerechten) {
     const r = recepten[g.receptId]
     if (!r) continue
-    const factor = schaalfactor(r, g.eters)
+    const factor = schaalfactor(r, g.eters, g.avonden)
     for (const i of r.ingredienten) {
       const naam = sleutel(i.naam)
       if (i.hoeveelheid === null) {

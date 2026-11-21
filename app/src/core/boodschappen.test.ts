@@ -18,8 +18,9 @@ test('normaliseer zet eenheden om naar basis', () => {
 test('schaalt per gerecht naar eters en avonden', () => {
   expect(behoeften([gerecht('p', 2)], { p: pasta })[0]).toEqual({ naam: 'pasta', hoeveelheid: 200, eenheid: 'g' })
   expect(behoeften([gerecht('p', 3)], { p: pasta })[0]).toEqual({ naam: 'pasta', hoeveelheid: 300, eenheid: 'g' })
-  const stoof = recept('st', [ing('vlees', 400, 'g')], { avonden: 2 })
-  expect(behoeften([gerecht('st', 2)], { st: stoof })[0].hoeveelheid).toBe(400)
+  const stoof = recept('st', [ing('vlees', 400, 'g')])
+  expect(behoeften([gerecht('st', 2, { avonden: 2 })], { st: stoof })[0].hoeveelheid).toBe(400)
+  expect(behoeften([gerecht('st', 2, { avonden: 1 })], { st: stoof })[0].hoeveelheid).toBe(200)
 })
 
 test('telt op over gerechten met verschillende eters', () => {

@@ -6,6 +6,7 @@ export type Recept = {
   titel: string
   porties: number
   tijdMinuten: number
+  /** standaard aantal avonden waarvoor je dit gerecht kookt (batch: meer dan 1); per gerecht aan te passen */
   avonden: number
   bron: string | null
   ingredienten: Ingredient[]
@@ -22,7 +23,8 @@ export type Verpakking = { hoeveelheid: number; eenheid: string }
 /** Sleutel = sleutel(naam) */
 export type Verpakkingen = Record<string, Verpakking>
 
-export type Gerecht = { receptId: string; eters: number; gegetenOp: string | null; vorigeKeer: string | null }
+/** eters en avonden zijn per gerecht instelbaar; avonden begint op de standaard van het recept. */
+export type Gerecht = { receptId: string; eters: number; avonden: number; gegetenOp: string | null; vorigeKeer: string | null }
 
 export type Menu = {
   versie: 2

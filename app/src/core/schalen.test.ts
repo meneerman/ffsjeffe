@@ -1,11 +1,17 @@
 import { expect, test } from 'vitest'
-import { schaalStap, toonHoeveelheid, toonIngredient } from './schalen'
+import { aantalPorties, schaalStap, toonHoeveelheid, toonIngredient } from './schalen'
 import { schaalfactor } from './boodschappen'
 import { ing, recept } from './testdata'
 
 test('schaalfactor = eters × avonden / porties', () => {
-  expect(schaalfactor(recept('r', [], { porties: 4, avonden: 2 }), 3)).toBe(1.5)
-  expect(schaalfactor(recept('r', [], { porties: 4 }), 2)).toBe(0.5)
+  expect(schaalfactor(recept('r', [], { porties: 4 }), 3, 2)).toBe(1.5)
+  expect(schaalfactor(recept('r', [], { porties: 4 }), 2, 1)).toBe(0.5)
+  expect(schaalfactor(recept('r', [], { porties: 12 }), 4, 3)).toBe(1)
+})
+
+test('aantalPorties = eters × avonden', () => {
+  expect(aantalPorties(4, 3)).toBe(12)
+  expect(aantalPorties(3, 1)).toBe(3)
 })
 
 test('toonHoeveelheid: max 1 decimaal met komma', () => {

@@ -38,7 +38,7 @@ export function schaalStap(stap: string, factor: number): string {
   })
 }
 
-/** Voor hoeveel porties het gerecht gekookt wordt: eters × avonden (bij een batchgerecht meer dan de eters). */
-export function aantalPorties(r: { avonden: number }, eters: number): number {
-  return eters * r.avonden
+/** Voor hoeveel porties het gerecht gekookt wordt: eters × avonden. */
+export function aantalPorties(eters: number, avonden: number): number {
+  return eters * avonden
 }

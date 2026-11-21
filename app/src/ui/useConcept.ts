@@ -25,7 +25,7 @@ export function useConcept(data: AppData, menu: Menu | null) {
   }, [concept, geldig])
 
   const { recepten, verpakkingen, instellingen } = data
-  const perId = useMemo(() => new Set(recepten.map((r) => r.id)), [recepten])
+  const perId = useMemo(() => new Map(recepten.map((r) => [r.id, r])), [recepten])
   const basis = useMemo(
     () => menu && menu.gerechten.length > 0
       ? menu.gerechten
@@ -33,7 +33,10 @@ export function useConcept(data: AppData, menu: Menu | null) {
     [menu, recepten, verpakkingen, instellingen.huishouden],
   )
 
-  const gerechten = (geldig?.gerechten ?? basis).filter((g) => perId.has(g.receptId))
+  // gerechten waarvan het recept weg is vallen eruit; oude menu's zonder avonden krijgen de standaard van het recept
+  const gerechten = (geldig?.gerechten ?? basis)
+    .filter((g) => perId.has(g.receptId))
+    .map((g) => (typeof g.avonden === 'number' && g.avonden >= 1 ? g : { ...g, avonden: perId.get(g.receptId)!.avonden }))
   const laatste = useRef(gerechten)
   laatste.current = gerechten
 

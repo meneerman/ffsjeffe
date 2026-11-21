@@ -3,6 +3,7 @@ import { schaalfactor } from '../core/boodschappen'
 import { aantalPorties, schaalStap, toonIngredient } from '../core/schalen'
 import type { Recept } from '../core/types'
 import { lees, schrijf } from './opslag'
+import { Stapper } from './Stapper'
 import { useConcept } from './useConcept'
 import type { AppData } from './useData'
 
@@ -48,14 +49,15 @@ export function ReceptPagina({ recept: r, data }: { recept: Recept; data: AppDat
   const menu = data.menu?.menu ?? null
   const concept = useConcept(data, menu)
   const opMenu = concept.gerechten.find((g) => g.receptId === r.id)
-  const [losseEters, setLosseEters] = useState(data.instellingen.huishouden)
-  const eters = opMenu?.eters ?? losseEters
-  const zetEters = (n: number) => {
-    const e = Math.max(1, n)
-    if (opMenu) concept.wijzig((huidig) => huidig.map((g) => (g.receptId === r.id ? { ...g, eters: e } : g)))
-    else setLosseEters(e)
+  const [los, setLos] = useState({ eters: data.instellingen.huishouden, avonden: r.avonden })
+  const eters = opMenu?.eters ?? los.eters
+  const avonden = opMenu?.avonden ?? los.avonden
+  const zet = (veld: 'eters' | 'avonden', n: number) => {
+    const w = Math.max(1, n)
+    if (opMenu) concept.wijzig((huidig) => huidig.map((g) => (g.receptId === r.id ? { ...g, [veld]: w } : g)))
+    else setLos((l) => ({ ...l, [veld]: w }))
   }
-  const factor = schaalfactor(r, eters)
+  const factor = schaalfactor(r, eters, avonden)
 
   const sleutel = `ffsjeffe.koken.${menu?.ronde ?? 'los'}.${r.id}`
   const [vg, setVg] = useState<Voortgang>(() => ({ i: [], v: [], s: [], ...(lees<Partial<Voortgang>>(sleutel) ?? {}) }))
@@ -74,13 +76,9 @@ export function ReceptPagina({ recept: r, data }: { recept: Recept; data: AppDat
       <h1 className="kop kook-kop">{r.titel}</h1>
       <div className="chips">
         {r.tijdMinuten > 0 && <span className="chip">{r.tijdMinuten} min</span>}
-        {r.avonden > 1 && <span className="chip">{aantalPorties(r, eters)} porties · {r.avonden} avonden</span>}
-        <span className="chip accent eters-chip">
-          <button aria-label="Minder eters" onClick={() => zetEters(eters - 1)} disabled={eters <= 1}>−</button>
-          <span aria-label="eters">{eters}</span>
-          <button aria-label="Meer eters" onClick={() => zetEters(eters + 1)}>+</button>
-          <span className="zacht">eters</span>
-        </span>
+        <Stapper naam="eters" icoon="👤" waarde={eters} wijzig={(n) => zet('eters', n)} />
+        <Stapper naam="avonden" icoon="☾" waarde={avonden} wijzig={(n) => zet('avonden', n)} />
+        {avonden > 1 && <span className="chip accent">{aantalPorties(eters, avonden)} porties</span>}
         {schermAan && <span className="chip scherm-aan"><span className="puls" aria-hidden="true" />scherm blijft aan</span>}
       </div>
 

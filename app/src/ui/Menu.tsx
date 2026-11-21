@@ -185,7 +185,7 @@ export function Menu({ data, repo, naam, herlaad, bijgewerkt, nu = () => new Dat
       </div>
 
       <div className="menu-kop">
-        <h1 className="kop kop-merk">ffs<em>jeffe</em></h1>
+        <h1 className="kop kop-merk">ff<em>sjeffe</em></h1>
         <a className="tandwiel" href="#/instellingen" aria-label="Instellingen">
           <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
             <circle cx="12" cy="12" r="3.2" />

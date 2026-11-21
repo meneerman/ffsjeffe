@@ -702,3 +702,10 @@ test('in het bevestigscherm kun je nog uitvinken; dat gaat niet naar Keep', asyn
   expect(regels.some((r) => r.startsWith('Olijfolie'))).toBe(false)
   expect(regels.some((r) => r.startsWith('Pasta'))).toBe(true)
 })
+
+test('de merknaam is ff (wit, even) en sjeffe (paars, chef)', async () => {
+  await toon(new NepRepo(), extra(3))
+  const kop = screen.getByRole('heading', { level: 1 })
+  expect(kop.textContent).toBe('ffsjeffe')
+  expect(kop.querySelector('em')?.textContent).toBe('sjeffe')
+})

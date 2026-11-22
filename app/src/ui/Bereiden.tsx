@@ -2,7 +2,9 @@ import { motion } from 'motion/react'
 import { aantalPorties } from '../core/schalen'
 import type { Menu, Recept } from '../core/types'
 import { dagenGeleden } from '../core/voorstel'
+import type { Winkels } from '../core/winkels'
 import { lijstItem } from './beweging'
+import { ReceptWinkelbordjes } from './Winkel'
 
 export function geledenTekst(datum: string | undefined, nu: Date): string {
   if (!datum) return 'nog nooit'
@@ -11,12 +13,13 @@ export function geledenTekst(datum: string | undefined, nu: Date): string {
 }
 
 /** De bereid-modus: het vastgezette menu, de boodschappen zijn gedaan. Alleen kijken, koken en afvinken. */
-export function Bereiden({ menu, perId, nu, bezig, wisselGegeten }: {
+export function Bereiden({ menu, perId, nu, bezig, wisselGegeten, winkels }: {
   menu: Menu
   perId: Record<string, Recept>
   nu: Date
   bezig: boolean
   wisselGegeten: (r: Recept) => void
+  winkels: Winkels
 }) {
   const lijst = menu.gerechten.filter((g) => perId[g.receptId])
   const gegeten = lijst.filter((g) => g.gegetenOp).length
@@ -41,6 +44,7 @@ export function Bereiden({ menu, perId, nu, bezig, wisselGegeten }: {
                 <div className="gerecht-kop">
                   <div className="gerecht-tekst">
                     <a className="titel" href={`#/recept/${encodeURIComponent(r.id)}`}>{r.titel}</a>
+                    <ReceptWinkelbordjes recept={r} winkels={winkels} />
                     <div className="meta zacht">{g.gegetenOp ? `✓ gegeten ${geledenTekst(g.gegetenOp, nu)}` : meta}</div>
                   </div>
                 </div>

@@ -163,3 +163,12 @@ test('slepen over de vinkjes in Alle recepten kiest meerdere recepten tegelijk',
   fireEvent.pointerUp(vakken[0], { pointerId: 1 })
   await screen.findByRole('button', { name: /Op het menu \(3\)/ })
 })
+
+test('winkeliconen bij een recept in Alle recepten als er ingrediënten niet bij Lidl of AH te koop zijn', async () => {
+  await toon(null)
+  const rij = (t: string) => vinkje(t).closest('li')!
+  // PASTA heeft zalmfilet (niet bij Lidl) en spinazie (niet bij AH)
+  expect(within(rij(PASTA)).getByLabelText('Niet bij Lidl: zalmfilet, spinazie')).toBeTruthy()
+  expect(within(rij(PASTA)).getByLabelText('Niet bij Albert Heijn: spinazie')).toBeTruthy()
+  expect(within(rij(WRAPS)).queryByLabelText(/Niet bij/)).toBeNull()
+})

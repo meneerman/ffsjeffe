@@ -684,3 +684,25 @@ test('zonder lopende ronde geen Keep leegmaken', async () => {
   await toon(repo, extra(3))
   expect(screen.queryByRole('button', { name: /Keep leegmaken/ })).toBeNull()
 })
+
+test('stapel: twee keer snel Nee slaat precies twee kaarten over', async () => {
+  await toon(new NepRepo(), extra(6))
+  await userEvent.click(screen.getByRole('button', { name: /Gerecht erbij/ }))
+  const dlg = () => screen.getByRole('dialog', { name: 'Gerecht toevoegen' })
+  const boven = () => within(dlg()).getByTestId('bovenste').querySelector('h2')!.textContent
+  const eerste = boven()
+  const tweede = within(dlg()).getAllByTestId('deck-kaart')[0].querySelector('h2')!.textContent
+  fireEvent.click(within(dlg()).getByRole('button', { name: 'Nee' }))
+  fireEvent.click(within(dlg()).getByRole('button', { name: 'Nee' }))
+  await waitFor(() => expect([eerste, tweede]).not.toContain(boven()))
+})
+
+test('stapel: Erbij vlak na Nee zet precies de volgende kaart erbij', async () => {
+  await toon(new NepRepo(), extra(6))
+  await userEvent.click(screen.getByRole('button', { name: /Gerecht erbij/ }))
+  const dlg = () => screen.getByRole('dialog', { name: 'Gerecht toevoegen' })
+  const tweede = within(dlg()).getAllByTestId('deck-kaart')[0].querySelector('h2')!.textContent
+  fireEvent.click(within(dlg()).getByRole('button', { name: 'Nee' }))
+  fireEvent.click(within(dlg()).getByRole('button', { name: 'Erbij' }))
+  await waitFor(() => expect(titels()).toEqual([tweede]))
+})

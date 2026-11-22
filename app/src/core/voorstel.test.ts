@@ -1,5 +1,5 @@
 import { expect, test } from 'vitest'
-import { dagenGeleden, kandidaten, restjes, score, stelVoor, vervang } from './voorstel'
+import { dagenGeleden, kandidaten, restjes, score } from './voorstel'
 import { gerecht, ing, recept } from './testdata'
 
 const NU = new Date('2026-11-21T12:00:00Z')
@@ -12,23 +12,9 @@ test('dagenGeleden in kalenderdagen', () => {
   expect(dagenGeleden('2026-11-21', new Date('2026-11-21T23:30:00Z'))).toBe(1) // al 22 nov in Amsterdam
 })
 
-test('stelt standaard 3 gerechten voor met standaard eters', () => {
-  const v = stelVoor(reeks(10), {}, {}, 2, 'zaad', NU)
-  expect(v).toHaveLength(3)
-  expect(v.every((g) => g.eters === 2 && g.avonden === 1 && g.gegetenOp === null && g.vorigeKeer === null)).toBe(true)
-  expect(stelVoor([recept('Batch', [], { avonden: 3 })], {}, {}, 4, 'z', NU)).toEqual([{ receptId: 'Batch', eters: 4, avonden: 3, gegetenOp: null, vorigeKeer: null }])
-  expect(new Set(v.map((g) => g.receptId)).size).toBe(3)
-})
-
-test('aantal is instelbaar en minder recepten = korter', () => {
-  expect(stelVoor(reeks(10), {}, {}, 2, 'z', NU, 5)).toHaveLength(5)
-  expect(stelVoor(reeks(2), {}, {}, 2, 'z', NU)).toHaveLength(2)
-  expect(stelVoor([], {}, {}, 2, 'z', NU)).toEqual([])
-})
-
 test('lang niet gegeten gaat voor', () => {
-  const v = stelVoor([recept('A', []), recept('B', [])], { A: '2026-11-20', B: '2026-09-01' }, {}, 2, 'z', NU, 1)
-  expect(v[0].receptId).toBe('B')
+  const k = kandidaten([], [recept('A', []), recept('B', [])], { A: '2026-11-20', B: '2026-09-01' }, {}, 2, 'z', NU)
+  expect(k[0].id).toBe('B')
 })
 
 const pasta = recept('pasta', [ing('crème fraîche', 100, 'ml')])
@@ -46,13 +32,14 @@ test('score: restjesbonus', () => {
 test('restjesbonus kiest het gerecht dat de aangebroken crème fraîche opmaakt', () => {
   const gegeten = { wraps: '2026-10-17', kaal: '2026-10-17' }
   for (const zaad of ['a', 'b', 'c', 'd']) {
-    expect(stelVoor([pasta, wraps, kaal], gegeten, VP, 4, zaad, NU, 2).map((g) => g.receptId)).toEqual(['pasta', 'wraps'])
+    expect(kandidaten([gerecht('pasta', 4)], [pasta, wraps, kaal], gegeten, VP, 4, zaad, NU)[0].id).toBe('wraps')
   }
 })
 
-test('zelfde zaad zelfde voorstel, ander zaad mag anders', () => {
-  expect(stelVoor(reeks(10), {}, {}, 2, 'x', NU)).toEqual(stelVoor(reeks(10), {}, {}, 2, 'x', NU))
-  const set = new Set(['a', 'b', 'c', 'd', 'e'].map((z) => JSON.stringify(stelVoor(reeks(10), {}, {}, 2, z, NU))))
+test('zelfde zaad zelfde volgorde, ander zaad mag anders', () => {
+  const volgorde = (z: string) => kandidaten([], reeks(10), {}, {}, 2, z, NU).map((r) => r.id)
+  expect(volgorde('x')).toEqual(volgorde('x'))
+  const set = new Set(['a', 'b', 'c', 'd', 'e'].map((z) => JSON.stringify(volgorde(z))))
   expect(set.size).toBeGreaterThan(1)
 })
 
@@ -62,27 +49,7 @@ test('kandidaten sluiten het menu uit, beste eerst', () => {
   expect(k[0].id).toBe('C')
 })
 
-test('voorstel en kandidaten gebruiken alleen avondeten', () => {
+test('kandidaten gebruiken alleen avondeten', () => {
   const rs = [recept('Toetje', [], { soort: 'toetje' }), recept('Ontbijt', [], { soort: 'ontbijt' }), recept('Diner', [])]
-  expect(stelVoor(rs, {}, {}, 4, 'z', NU).map((g) => g.receptId)).toEqual(['Diner'])
   expect(kandidaten([], rs, {}, {}, 4, 'z', NU).map((r) => r.id)).toEqual(['Diner'])
-})
-
-test('vervang: volgende beste op dezelfde plek, eters en avonden blijven', () => {
-  const rs = [recept('A', []), recept('B', []), recept('C', []), recept('D', [], { avonden: 3 })]
-  const laatst = { A: '2026-11-20', B: '2026-10-01', C: '2026-11-10', D: '2026-08-01' }
-  const menu = [gerecht('A', 5, { avonden: 2 }), gerecht('B', 3)]
-  const nieuw = vervang(menu, 'A', rs, laatst, {}, 4, 'z', NU, new Set())!
-  expect(nieuw).toHaveLength(2)
-  expect(nieuw[0]).toMatchObject({ receptId: 'D', eters: 5, avonden: 2, gegetenOp: null }) // beste die nog niet op het menu staat
-  expect(nieuw[1]).toEqual(menu[1])
-})
-
-test('vervang slaat al weggeveegde recepten over; geen alternatief = null', () => {
-  const rs = [recept('A', []), recept('B', []), recept('C', [])]
-  const laatst = { A: '2026-11-20', B: '2026-09-01', C: '2026-10-01' }
-  expect(vervang([gerecht('A')], 'A', rs, laatst, {}, 2, 'z', NU, new Set(['B']))![0].receptId).toBe('C')
-  expect(vervang([gerecht('A')], 'A', rs, laatst, {}, 2, 'z', NU, new Set(['B', 'C']))).toBeNull()
-  expect(vervang([gerecht('A')], 'A', [recept('A', [])], {}, {}, 2, 'z', NU, new Set())).toBeNull()
-  expect(vervang([gerecht('A')], 'weg', rs, laatst, {}, 2, 'z', NU, new Set())).toBeNull()
 })

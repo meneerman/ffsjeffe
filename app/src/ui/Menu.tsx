@@ -1,24 +1,24 @@
-import { useEffect, useMemo, useRef, useState } from 'react'
+import { AnimatePresence, motion } from 'motion/react'
+import { useMemo, useRef, useState } from 'react'
 import { behoeften, boodschappenItems } from '../core/boodschappen'
 import { leegmaken, markeerGegeten, vastzetten, zaadVoor } from '../core/menu'
 import type { Menu as MenuT, Recept } from '../core/types'
 import { pakOp, type PakOp } from '../core/pakop'
 import { aantalPorties } from '../core/schalen'
-import { kandidaten, stelVoor, vervang } from '../core/voorstel'
+import { kandidaten } from '../core/voorstel'
 import { VerouderdFout } from '../data/github'
 import type { SchermProps } from './App'
 import { Bereiden, geledenTekst } from './Bereiden'
 import { Boodschappen } from './Boodschappen'
 import { NaLopen } from './NaLopen'
+import { Venster } from './Venster'
+import { druk, lijstItem, snel } from './beweging'
 import { KeepStatusMelding } from './KeepStatus'
 import { Toevoegen } from './Toevoegen'
 import { Stapper } from './Stapper'
 import { useConcept } from './useConcept'
 
-const UIT_MS = 420 // uitglijden + inklappen
 const TREK_DREMPEL = 70
-const VEEG_DREMPEL = 90
-const VEEG_MS = 260
 
 /** "25 min · 12 porties · 18 dagen geleden"; porties alleen bij meer dan één avond. */
 export function receptMeta(r: Recept, laatstGegeten: Record<string, string>, nu: Date, eters: number, avonden: number): string {
@@ -65,9 +65,6 @@ export function Menu({ data, repo, naam, herlaad, bijgewerkt, nu = () => new Dat
   const [bevestigVast, setBevestigVast] = useState(false)
   const [bezig, setBezig] = useState(false)
   const [fout, setFout] = useState<Error | null>(null)
-  const [verdwijnt, setVerdwijnt] = useState<Set<string>>(new Set())
-  const timers = useRef<ReturnType<typeof setTimeout>[]>([])
-  useEffect(() => () => timers.current.forEach(clearTimeout), [])
 
   const schrijf = async (m: MenuT, bericht: string) => {
     setBezig(true)
@@ -119,39 +116,10 @@ export function Menu({ data, repo, naam, herlaad, bijgewerkt, nu = () => new Dat
     }
   }
 
-  const weggeveegd = useRef<Set<string>>(new Set())
-  const nieuwVoorstel = () => {
-    const anders = data.recepten.filter((r) => !weggeveegd.current.has(r.id))
-    const bron = anders.length >= 3 ? anders : data.recepten
-    concept.wijzig(stelVoor(bron, laatstGegeten, data.verpakkingen, standaard, zaadVoor(menu), nu()))
-    weggeveegd.current = new Set()
-  }
-
   const verwijder = (id: string) => {
-    weggeveegd.current.add(id)
-    setVerdwijnt((s) => new Set(s).add(id))
-    timers.current.push(setTimeout(() => {
-      concept.wijzig((huidig) => huidig.filter((g) => g.receptId !== id))
-      setVerdwijnt((s) => { const n = new Set(s); n.delete(id); return n })
-    }, UIT_MS))
+    concept.wijzig((huidig) => huidig.filter((g) => g.receptId !== id))
   }
 
-  /**
-   * Volgende beste gerecht op dezelfde plek, met dezelfde eters en avonden. Geeft de uit te voeren wissel terug
-   * (de kaart wil eerst uitvliegen), of null als er geen alternatief is.
-   */
-  const [binnen, setBinnen] = useState<string | null>(null)
-  const probeerWissel = (id: string): (() => void) | null => {
-    const nieuw = vervang(laatsteLijst.current, id, data.recepten, laatstGegeten, data.verpakkingen, standaard, zaadVoor(menu), nu(), weggeveegd.current)
-    const nieuwId = nieuw?.find((g) => !laatsteLijst.current.some((o) => o.receptId === g.receptId))?.receptId
-    if (!nieuwId) return null
-    return () => {
-      weggeveegd.current.add(id)
-      concept.wijzig((huidig) => huidig.map((g) => (g.receptId === id ? { ...g, receptId: nieuwId, gegetenOp: null, vorigeKeer: null } : g)))
-      setBinnen(nieuwId)
-      timers.current.push(setTimeout(() => setBinnen(null), 500))
-    }
-  }
 
   const zet = (id: string, veld: 'eters' | 'avonden', n: number) =>
     concept.wijzig((huidig) => huidig.map((g) => (g.receptId === id ? { ...g, [veld]: Math.max(1, n) } : g)))
@@ -176,6 +144,10 @@ export function Menu({ data, repo, naam, herlaad, bijgewerkt, nu = () => new Dat
   const kanBereiden = !!menu && menu.gerechten.length > 0
   const bereiden = kanBereiden && (modus ?? (concept.heeftConcept ? 'plannen' : 'bereiden')) === 'bereiden'
   const [teVerwijderen, setTeVerwijderen] = useState<string | null>(null)
+  // tijdens het wegglijden van het venster blijft de laatst gevraagde titel staan
+  const laatstGevraagd = useRef<string | null>(null)
+  if (teVerwijderen) laatstGevraagd.current = teVerwijderen
+  const vraagId = teVerwijderen ?? laatstGevraagd.current
   const magVastzetten = gerechten.length > 0
 
   return (
@@ -196,8 +168,12 @@ export function Menu({ data, repo, naam, herlaad, bijgewerkt, nu = () => new Dat
       <p className="kop-sub">{bereiden ? 'Wat we bereiden' : 'Wat eten we deze keer?'}</p>
       {kanBereiden && (
         <div className="modus" role="tablist" aria-label="Modus">
-          <button role="tab" aria-selected={!bereiden} className={!bereiden ? 'aan' : ''} onClick={() => setModus('plannen')}>Plannen</button>
-          <button role="tab" aria-selected={bereiden} className={bereiden ? 'aan' : ''} onClick={() => setModus('bereiden')}>Bereiden</button>
+          <motion.button whileTap={druk} role="tab" aria-selected={!bereiden} className={!bereiden ? 'aan' : ''} onClick={() => setModus('plannen')}>
+            {!bereiden && <motion.span layoutId="modus-blok" className="modus-blok" aria-hidden="true" transition={snel} />}<span>Plannen</span>
+          </motion.button>
+          <motion.button whileTap={druk} role="tab" aria-selected={bereiden} className={bereiden ? 'aan' : ''} onClick={() => setModus('bereiden')}>
+            {bereiden && <motion.span layoutId="modus-blok" className="modus-blok" aria-hidden="true" transition={snel} />}<span>Bereiden</span>
+          </motion.button>
         </div>
       )}
 
@@ -231,6 +207,7 @@ export function Menu({ data, repo, naam, herlaad, bijgewerkt, nu = () => new Dat
         <p className="kaart">Nog geen recepten. Voeg ze toe in Obsidian in de map <code>recepten</code>.</p>
       ) : (
         <ul className="gerechten">
+          <AnimatePresence initial={false}>
           {getoond.map((g) => (
             <GerechtKaart
               key={g.receptId}
@@ -241,11 +218,8 @@ export function Menu({ data, repo, naam, herlaad, bijgewerkt, nu = () => new Dat
               gegetenOp={vastgezet.get(g.receptId)?.gegetenOp ?? null}
               kanGegeten={vastgezet.has(g.receptId)}
               nu={nu()}
-              verdwijnt={verdwijnt.has(g.receptId)}
               bezig={bezig}
               vraagVerwijder={() => setTeVerwijderen(g.receptId)}
-              probeerWissel={() => probeerWissel(g.receptId)}
-              binnen={binnen === g.receptId}
               tip={vastgezet.get(g.receptId)?.gegetenOp ? null : pakOp(perId[g.receptId], g, data.verpakkingen)}
               pasTipToe={(t: PakOp) => concept.wijzig((huidig) => huidig.map((x) => (x.receptId === g.receptId ? { ...x, eters: t.eters, avonden: t.avonden } : x)))}
               zetEters={(n: number) => zet(g.receptId, 'eters', n)}
@@ -253,22 +227,20 @@ export function Menu({ data, repo, naam, herlaad, bijgewerkt, nu = () => new Dat
               wisselGegeten={() => wisselGegeten(perId[g.receptId])}
             />
           ))}
+          </AnimatePresence>
         </ul>
       )}
 
       {!bereiden && gerechten.length === 0 && data.recepten.length > 0 && (
-        <div className="leeg">
-          <p className="zacht">Het menu is leeg.</p>
-          <button className="knop" onClick={nieuwVoorstel}>Nieuw voorstel</button>
-        </div>
+        <p className="leeg zacht">Nog niets gepland</p>
       )}
 
       {!bereiden && data.recepten.length > 0 && (
-        <div className="erbij-rij">
-          <button className="erbij" onClick={() => setToevoegen(true)}>
+        <div className="erbij-blok">
+          <motion.button whileTap={druk} className="erbij" onClick={() => setToevoegen(true)}>
             <span className="plus" aria-hidden="true">+</span> Gerecht erbij
-          </button>
-          <a className="alle-recepten" href="#/recepten">☰ Alle recepten</a>
+          </motion.button>
+          <motion.a whileTap={druk} className="chip alle-recepten" href="#/recepten">☰ Alle recepten</motion.a>
         </div>
       )}
 
@@ -281,15 +253,22 @@ export function Menu({ data, repo, naam, herlaad, bijgewerkt, nu = () => new Dat
         </div>
       )}
 
-      <div className="onderbalk">
-        {!bereiden && (
-          <button className="pil" onClick={() => setBevestigVast(true)} disabled={bezig || !magVastzetten}>
-            {bezig ? 'Bezig…' : 'Op de boodschappenlijst'} <span className="pil-pijl" aria-hidden="true">→</span>
-          </button>
-        )}
-        <button className="link-zacht" onClick={() => setLeegVragen(true)} disabled={bezig}>Keep leegmaken</button>
-      </div>
+      {/* Keep leegmaken sluit een ronde af: zelden nodig, dus klein onderaan Bereiden */}
+      {bereiden && (
+        <div className="ronde-klaar">
+          <button className="link-zacht" onClick={() => setLeegVragen(true)} disabled={bezig}>Ronde klaar? Keep leegmaken</button>
+        </div>
+      )}
 
+      {!bereiden && (
+        <div className="onderbalk">
+          <motion.button whileTap={druk} className="pil" onClick={() => setBevestigVast(true)} disabled={bezig || !magVastzetten}>
+            {bezig ? 'Bezig…' : 'Op de boodschappenlijst'} <span className="pil-pijl" aria-hidden="true">→</span>
+          </motion.button>
+        </div>
+      )}
+
+      <AnimatePresence>
       {toevoegen && (
         <Toevoegen
           opties={kandidaten(gerechten, data.recepten, laatstGegeten, data.verpakkingen, standaard, zaadVoor(menu), nu())}
@@ -301,26 +280,21 @@ export function Menu({ data, repo, naam, herlaad, bijgewerkt, nu = () => new Dat
           }}
         />
       )}
+      </AnimatePresence>
 
-      {teVerwijderen && perId[teVerwijderen] && (
-        <div className="paneel-achtergrond" onClick={() => setTeVerwijderen(null)}>
-          <div className="paneel" role="dialog" aria-label="Weet je het zeker?" onClick={(e) => e.stopPropagation()}>
+      <Venster open={!!teVerwijderen && !!perId[teVerwijderen]} sluit={() => setTeVerwijderen(null)} label="Weet je het zeker?">
             <h2 className="kop-klein">Weet je het zeker?</h2>
-            <p className="zacht">{perId[teVerwijderen].titel} gaat van het menu af.</p>
-            {vastgezet.has(teVerwijderen) && (
+            <p className="zacht">{vraagId && perId[vraagId]?.titel} gaat van het menu af.</p>
+            {vraagId && vastgezet.has(vraagId) && (
               <p className="zacht">De ingrediënten staan al in Keep. Ze gaan pas van de lijst als je opnieuw op de boodschappenlijst drukt.</p>
             )}
             <div className="knoppenrij">
               <button className="knop" onClick={() => setTeVerwijderen(null)}>Annuleren</button>
-              <button className="knop gevaar" onClick={() => { const id = teVerwijderen; setTeVerwijderen(null); verwijder(id) }}>Verwijderen</button>
+              <button className="knop gevaar" onClick={() => { const id = teVerwijderen; setTeVerwijderen(null); if (id) verwijder(id) }}>Verwijderen</button>
             </div>
-          </div>
-        </div>
-      )}
+      </Venster>
 
-      {bevestigVast && (
-        <div className="paneel-achtergrond" onClick={() => setBevestigVast(false)}>
-          <div className="paneel ruim" role="dialog" aria-label="Naar Keep sturen" onClick={(e) => e.stopPropagation()}>
+      <Venster open={bevestigVast} sluit={() => setBevestigVast(false)} label="Naar Keep sturen" ruim>
             <h2 className="kop-klein">Weet je het zeker?</h2>
             <p className="zacht">Dit gaat naar Keep. Vink nog uit wat je al in huis hebt.</p>
             <NaLopen items={nieuweItems} categorieen={data.categorieen} uit={uit} onWissel={wisselRegel} />
@@ -328,22 +302,16 @@ export function Menu({ data, repo, naam, herlaad, bijgewerkt, nu = () => new Dat
               <button className="knop" onClick={() => setBevestigVast(false)}>Annuleren</button>
               <button className="knop primair" disabled={bezig} onClick={() => { setBevestigVast(false); void zetVast() }}>Ja, naar Keep</button>
             </div>
-          </div>
-        </div>
-      )}
+      </Venster>
 
-      {leegVragen && (
-        <div className="paneel-achtergrond" onClick={() => setLeegVragen(false)}>
-          <div className="paneel" role="dialog" aria-label="Keep leegmaken" onClick={(e) => e.stopPropagation()}>
+      <Venster open={leegVragen} sluit={() => setLeegVragen(false)} label="Keep leegmaken">
             <h2 className="kop-klein">Keep leegmaken?</h2>
             <p className="zacht">Alles van ffsjeffe gaat van de Keep-lijst (ook wat al is afgevinkt) en het menu wordt leeg. Wat jullie zelf op de lijst zetten, blijft staan.</p>
             <div className="knoppenrij">
               <button className="knop" onClick={() => setLeegVragen(false)}>Annuleren</button>
               <button className="knop gevaar" onClick={maakLeeg}>Leegmaken</button>
             </div>
-          </div>
-        </div>
-      )}
+      </Venster>
     </div>
   )
 }
@@ -351,82 +319,34 @@ export function Menu({ data, repo, naam, herlaad, bijgewerkt, nu = () => new Dat
 function GerechtKaart(p: {
   recept: Recept; eters: number; avonden: number; meta: string; gegetenOp: string | null; kanGegeten: boolean; nu: Date
   tip: PakOp | null; pasTipToe: (t: PakOp) => void
-  verdwijnt: boolean; bezig: boolean; vraagVerwijder: () => void; probeerWissel: () => (() => void) | null; binnen: boolean; zetEters: (n: number) => void; zetAvonden: (n: number) => void; wisselGegeten: () => void
+  bezig: boolean; vraagVerwijder: () => void; zetEters: (n: number) => void; zetAvonden: (n: number) => void; wisselGegeten: () => void
 }) {
   const { recept: r } = p
-
-  // opzij vegen = ander gerecht; de kaart vliegt weg en het nieuwe schuift erin (key = recept)
-  const [dx, setDx] = useState(0)
-  const [weg, setWeg] = useState<-1 | 1 | 0>(0)
-  const start = useRef<{ x: number; y: number } | null>(null)
-  const verplaatst = useRef(false)
-  const timer = useRef<ReturnType<typeof setTimeout>>()
-  useEffect(() => () => clearTimeout(timer.current), [])
-  const kanVegen = !p.gegetenOp && !p.verdwijnt
-
-  const los = () => {
-    if (!start.current) return
-    start.current = null
-    if (Math.abs(dx) <= VEEG_DREMPEL) { setDx(0); return }
-    const toepas = p.probeerWissel()
-    if (!toepas) { setDx(0); return } // geen alternatief: terugveren
-    wegMet(dx < 0 ? -1 : 1, toepas)
-  }
-  const wegMet = (richting: -1 | 1, toepas: () => void) => {
-    setWeg(richting)
-    timer.current = setTimeout(toepas, VEEG_MS) // daarna vervangt een nieuwe kaart deze (andere key)
-  }
-  const x = weg ? weg * 420 : dx
-  const veegt = start.current !== null
-
   return (
-    <li
-      data-testid="gerecht"
-      className={`gerecht-rij${p.verdwijnt ? ' uit' : ''}${p.gegetenOp ? ' gegeten' : ''}${p.binnen ? ' binnen' : ''}`}
-      onPointerDown={(e) => {
-        if (!kanVegen || weg || (e.target as HTMLElement).closest('button, a, input')) return
-        start.current = { x: e.clientX, y: e.clientY }
-        verplaatst.current = false
-      }}
-      onPointerMove={(e) => {
-        if (!start.current) return
-        const d = e.clientX - start.current.x
-        if (Math.abs(d) > 8) verplaatst.current = true
-        setDx(d)
-      }}
-      onPointerUp={los}
-      onPointerCancel={() => { start.current = null; setDx(0) }}
-      onClickCapture={(e) => { if (verplaatst.current) { e.preventDefault(); e.stopPropagation(); verplaatst.current = false } }}
-    >
-      <div
-        className={`kaart gerecht${weg ? ' weggeveegd' : ''}`}
-        style={x ? { transform: `translateX(${x}px) rotate(${x / 40}deg)`, opacity: weg ? 0 : 1 - Math.min(0.5, Math.abs(x) / 400), transition: veegt ? 'none' : `transform ${VEEG_MS}ms var(--veer), opacity ${VEEG_MS}ms` } : undefined}
-      >
-        <>
-            <div className="gerecht-kop">
-              <div className="gerecht-tekst">
-                <a className="titel" href={`#/recept/${encodeURIComponent(r.id)}`}>{r.titel}</a>
-                <div className="meta zacht">{p.gegetenOp ? `✓ gegeten ${geledenTekst(p.gegetenOp, p.nu)}` : p.meta}</div>
-              </div>
-              {kanVegen && <button className="wissel-knop" aria-label={`Ander gerecht voor ${r.titel}`} onClick={() => { const toepas = p.probeerWissel(); if (toepas) wegMet(-1, toepas) }}>⇄</button>}
-              <button className="verwijder-knop" aria-label={`Verwijder ${r.titel}`} onClick={p.vraagVerwijder}>×</button>
-            </div>
-            {p.tip && (
-              <button className="pakop" onClick={() => p.pasTipToe(p.tip!)}>
-                Pak {p.tip.naam} op: {p.tip.avonden !== p.avonden ? `${p.tip.avonden} avonden` : `${p.tip.eters} eters`} · {p.tip.porties} porties
-              </button>
-            )}
-            <div className="gerecht-bediening">
-              <Stapper naam="eters" icoon="👤" waarde={p.eters} wijzig={p.zetEters} klein />
-              <Stapper naam="avonden" icoon="☾" waarde={p.avonden} wijzig={p.zetAvonden} klein />
-              {p.kanGegeten && (
-                <button className={`gegeten-knop${p.gegetenOp ? ' aan' : ''}`} aria-label={`${r.titel} gegeten`} aria-pressed={!!p.gegetenOp} onClick={p.wisselGegeten} disabled={p.bezig}>
-                  ✓<span className="label"> Gegeten</span>
-                </button>
-              )}
-            </div>
-        </>
+    <motion.li layout variants={lijstItem} initial="verborgen" animate="zichtbaar" exit="weg" data-testid="gerecht" className={`gerecht-rij${p.gegetenOp ? ' gegeten' : ''}`}>
+      <div className="kaart gerecht">
+        <div className="gerecht-kop">
+          <div className="gerecht-tekst">
+            <a className="titel" href={`#/recept/${encodeURIComponent(r.id)}`}>{r.titel}</a>
+            <div className="meta zacht">{p.gegetenOp ? `✓ gegeten ${geledenTekst(p.gegetenOp, p.nu)}` : p.meta}</div>
+          </div>
+          <button className="verwijder-knop" aria-label={`Verwijder ${r.titel}`} onClick={p.vraagVerwijder}>×</button>
+        </div>
+        {p.tip && (
+          <button className="pakop" onClick={() => p.pasTipToe(p.tip!)}>
+            Pak {p.tip.naam} op: {p.tip.avonden !== p.avonden ? `${p.tip.avonden} avonden` : `${p.tip.eters} eters`} · {p.tip.porties} porties
+          </button>
+        )}
+        <div className="gerecht-bediening">
+          <Stapper naam="eters" icoon="👤" waarde={p.eters} wijzig={p.zetEters} klein />
+          <Stapper naam="avonden" icoon="☾" waarde={p.avonden} wijzig={p.zetAvonden} klein />
+          {p.kanGegeten && (
+            <button className={`gegeten-knop${p.gegetenOp ? ' aan' : ''}`} aria-label={`${r.titel} gegeten`} aria-pressed={!!p.gegetenOp} onClick={p.wisselGegeten} disabled={p.bezig}>
+              ✓<span className="label"> Gegeten</span>
+            </button>
+          )}
+        </div>
       </div>
-    </li>
+    </motion.li>
   )
 }

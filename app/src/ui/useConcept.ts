@@ -1,7 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
-import { zaadVoor } from '../core/menu'
 import type { Concept, Gerecht, Menu } from '../core/types'
-import { stelVoor } from '../core/voorstel'
 import { VerouderdFout } from '../data/github'
 import { lees, schrijf } from './opslag'
 import type { AppData, Repo } from './useData'
@@ -18,7 +16,7 @@ const tijd = (c: { sinds: string } | null) => (c ? Date.parse(c.sinds) : NaN)
  * (weekmenu/concept.json, niet menu.json: alleen menu.json start de Keep-sync), zodat twee mensen los van
  * elkaar kunnen voorbereiden en één van hen later naar Keep stuurt.
  *
- * Volgorde: nieuwste geldige concept (lokaal of gedeeld) → leeg als er al een menu vastgezet is → voorstel van 3.
+ * Volgorde: nieuwste geldige concept (lokaal of gedeeld), anders leeg (geen automatisch voorstel meer).
  * Een concept vervalt als iemand daarna (opnieuw) vastzette of leegmaakte.
  * Schrijven gaat met uitstel; bij een botsing met de ander wint de laatste schrijver.
  */
@@ -42,17 +40,11 @@ export function useConcept(data: AppData, menu: Menu | null, repo: Repo, naam: s
     }
   }, [lokaal, geldigLokaal])
 
-  const { recepten, verpakkingen, instellingen } = data
+  const { recepten } = data
   const perId = useMemo(() => new Map(recepten.map((r) => [r.id, r])), [recepten])
-  const basis = useMemo(
-    () => menu && menu.gerechten.length > 0
-      ? [] // wat al vastgezet is staat in Bereiden; Plannen begint leeg voor wat erbij komt
-      : stelVoor(recepten, menu?.laatstGegeten ?? {}, verpakkingen, instellingen.huishouden, zaadVoor(menu), new Date()),
-    [menu, recepten, verpakkingen, instellingen.huishouden],
-  )
 
   // gerechten waarvan het recept weg is vallen eruit; oude menu's zonder avonden krijgen de standaard van het recept
-  const gerechten = (actief?.gerechten ?? basis)
+  const gerechten = (actief?.gerechten ?? [])
     .filter((g) => perId.has(g.receptId))
     .map((g) => (typeof g.avonden === 'number' && g.avonden >= 1 ? g : { ...g, avonden: perId.get(g.receptId)!.avonden }))
   const laatste = useRef(gerechten)

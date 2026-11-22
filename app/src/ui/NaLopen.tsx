@@ -1,5 +1,7 @@
+import { AnimatePresence, motion } from 'motion/react'
 import { groepeerPerCategorie, type BoodschappenItem } from '../core/boodschappen'
 import type { Categorieen } from '../core/types'
+import { lijstItem } from './beweging'
 
 type Props = {
   items: BoodschappenItem[]
@@ -22,14 +24,16 @@ export function NaLopen({ items, categorieen, uit, onWissel }: Props) {
         <div key={g.categorie} className="kaart nalopen-groep">
           <h3>{g.categorie}</h3>
           <ul>
+            <AnimatePresence initial={false}>
             {g.items.map((i) => (
-              <li key={i.regel}>
+              <motion.li key={i.regel} layout variants={lijstItem} initial="verborgen" animate="zichtbaar" exit="weg">
                 <label>
                   <input type="checkbox" checked={!uit.has(i.regel)} onChange={() => onWissel(i.regel)} />
                   <span>{i.regel}</span>
                 </label>
-              </li>
+              </motion.li>
             ))}
+            </AnimatePresence>
           </ul>
         </div>
       ))}

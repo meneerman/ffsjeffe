@@ -44,13 +44,13 @@ export function Bereiden({ menu, perId, nu, bezig, wisselGegeten, winkels }: {
                 <div className="gerecht-kop">
                   <div className="gerecht-tekst">
                     <a className="titel" href={`#/recept/${encodeURIComponent(r.id)}`}>{r.titel}</a>
-                    <ReceptWinkelbordjes recept={r} winkels={winkels} />
-                    <div className="meta zacht">{g.gegetenOp ? `✓ gegeten ${geledenTekst(g.gegetenOp, nu)}` : meta}</div>
+                    <div className="meta-rij">
+                      <span className="meta zacht">{g.gegetenOp ? `✓ gegeten ${geledenTekst(g.gegetenOp, nu)}` : meta}</span>
+                      <ReceptWinkelbordjes recept={r} winkels={winkels} />
+                    </div>
                   </div>
-                </div>
-                <div className="gerecht-bediening">
-                  <button className={`gegeten-knop${g.gegetenOp ? ' aan' : ''}`} aria-label={`${r.titel} gegeten`} aria-pressed={!!g.gegetenOp} onClick={() => wisselGegeten(r)} disabled={bezig}>
-                    ✓<span className="label"> Gegeten</span>
+                  <button className={`gegeten-knop rond-knop${g.gegetenOp ? ' aan' : ''}`} aria-label={`${r.titel} gegeten`} aria-pressed={!!g.gegetenOp} onClick={() => wisselGegeten(r)} disabled={bezig}>
+                    <span aria-hidden="true">✓</span>
                   </button>
                 </div>
               </div>

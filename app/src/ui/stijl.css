@@ -79,7 +79,6 @@ footer { margin-top: 40px; text-align: center; }
 .gerechten { list-style: none; padding: 0; margin: 14px 0 0; display: grid; gap: 10px; }
 .gerecht-rij { position: relative; max-height: 220px; transition: max-height 0.2s ease 0.22s, opacity 0.2s ease 0.22s, margin 0.2s ease 0.22s; }
 .gerecht-rij { touch-action: pan-y; }
-.gerecht-rij.binnen .gerecht { animation: binnen 0.32s var(--veer); }
 @keyframes binnen { from { transform: translateX(-36px); opacity: 0; } to { transform: none; opacity: 1; } }
 .gerecht-rij.uit { max-height: 0; opacity: 0; margin-top: -10px; }
 .gerecht { position: relative; display: flex; flex-direction: column; align-items: stretch; gap: 10px; background: #121216; transition: transform 0.25s var(--veer), opacity 0.25s; }
@@ -103,8 +102,6 @@ footer { margin-top: 40px; text-align: center; }
 .gegeten-knop.aan { background: var(--accent); color: var(--bg); border-color: var(--accent); }
 .gegeten-knop .label { display: none; }
 @media (min-width: 420px) { .gegeten-knop .label { display: inline; } }
-.wissel-knop { width: 30px; height: 30px; border-radius: 50%; border: 0; background: none; color: var(--zacht); font-size: 17px; line-height: 1; }
-.wissel-knop:hover { color: var(--tekst); }
 .verwijder-knop { width: 30px; height: 30px; border-radius: 50%; border: 0; background: none; color: var(--zacht); font-size: 20px; line-height: 1; }
 .gerecht-rij.gegeten .gerecht { opacity: 0.55; }
 .gerecht-rij.gegeten .titel { text-decoration: line-through; text-decoration-color: rgba(236, 235, 231, 0.35); }
@@ -180,7 +177,6 @@ footer { margin-top: 40px; text-align: center; }
 .gerecht-kop { display: flex; align-items: flex-start; gap: 8px; }
 .gerecht-bediening { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; position: relative; z-index: 1; }
 .gerecht-bediening .gegeten-knop { margin-left: auto; }
-.gerecht-kop .wissel-knop { position: relative; z-index: 1; margin: -4px 0 0 0; }
 .gerecht-kop .verwijder-knop { position: relative; z-index: 1; margin: -4px -6px 0 0; }
 .stapper { display: inline-flex; align-items: center; border: 1px solid var(--rand); border-radius: 99px; background: var(--vlak); }
 .stapper button { width: 34px; height: 34px; border: 0; background: none; font-size: 18px; color: var(--zacht); }
@@ -189,9 +185,6 @@ footer { margin-top: 40px; text-align: center; }
 .stapper .icoon { font-size: 11px; opacity: 0.55; filter: grayscale(1); }
 
 /* Alle recepten */
-.erbij-rij { display: flex; gap: 8px; align-items: stretch; margin: 12px 0; }
-.erbij-rij .erbij { margin: 0; flex: 1; }
-.alle-recepten { display: flex; align-items: center; padding: 0 16px; border-radius: var(--radius); border: 1px solid var(--rand); background: var(--vlak); color: var(--tekst); text-decoration: none; font-size: 14px; white-space: nowrap; }
 .filters { display: flex; gap: 8px; overflow-x: auto; padding-bottom: 4px; margin: 4px -16px 0; padding-left: 16px; padding-right: 16px; scrollbar-width: none; }
 .filters .chip { flex: none; cursor: pointer; color: var(--tekst); }
 .receptlijst li { display: flex; align-items: center; }
@@ -222,9 +215,9 @@ footer { margin-top: 40px; text-align: center; }
 .concept-status .bewaard { color: var(--accent, #a78bfa); }
 
 /* Bereiden | Plannen */
-.modus { display: flex; gap: 4px; padding: 4px; margin: 4px 0 14px; border-radius: 99px; background: rgba(255, 255, 255, 0.06); width: max-content; }
-.modus button { border: 0; background: none; color: var(--zacht); padding: 7px 16px; border-radius: 99px; font-size: 13.5px; font-weight: 500; }
-.modus button.aan { background: var(--tekst); color: var(--bg); }
+
+
+
 .voortgang { margin: 0 0 10px; }
 .gerecht.bereid .gerecht-bediening { justify-content: flex-end; }
 
@@ -244,3 +237,18 @@ footer { margin-top: 40px; text-align: center; }
 .paneel.ruim { max-height: 88vh; overflow-y: auto; }
 .paneel.ruim .nalopen { margin-top: 10px; }
 .knop.primair { background: var(--accent); border-color: transparent; color: #0b0b0e; }
+
+/* Plannen | Bereiden: volle breedte, twee gelijke helften */
+.modus { position: relative; display: grid; grid-template-columns: 1fr 1fr; gap: 0; padding: 4px; margin: 6px 0 18px; border-radius: 99px; background: rgba(255, 255, 255, 0.06); border: 1px solid var(--rand); }
+.modus button { position: relative; min-height: 44px; border: 0; background: none; color: var(--zacht); border-radius: 99px; font-size: 15px; font-weight: 500; letter-spacing: 0.01em; transition: color 0.2s; }
+.modus button.aan { color: var(--bg); }
+.modus button span { position: relative; z-index: 1; }
+.modus .modus-blok { position: absolute; inset: 0; border-radius: 99px; background: var(--tekst); z-index: 0; }
+
+/* Gerecht erbij: groot; Alle recepten als kleine chip eronder */
+.erbij-blok { display: grid; justify-items: center; gap: 10px; margin: 14px 0 8px; }
+.erbij-blok .erbij { margin: 0; }
+.erbij-blok .alle-recepten { text-decoration: none; color: var(--zacht); }
+
+/* Keep leegmaken: klein, onderaan Bereiden */
+.ronde-klaar { display: flex; justify-content: center; margin: 28px 0 8px; }

@@ -84,34 +84,3 @@ export function kandidaten(
   const s = new Map(recepten.filter((r) => r.soort === 'avondeten' && !op.has(r.id)).map((r) => [r.id, score(r, laatstGegeten, vandaag, rest, verpakkingen, eters, rnd[r.id])]))
   return recepten.filter((r) => s.has(r.id)).sort((a, b) => s.get(b.id)! - s.get(a.id)! || a.id.localeCompare(b.id))
 }
-
-export function stelVoor(
-  recepten: Recept[], laatstGegeten: Record<string, string>, verpakkingen: Verpakkingen,
-  eters: number, seed: string, vandaag: Date, aantal = 3,
-): Gerecht[] {
-  const gerechten: Gerecht[] = []
-  while (gerechten.length < aantal) {
-    const beste = kandidaten(gerechten, recepten, laatstGegeten, verpakkingen, eters, seed, vandaag)[0]
-    if (!beste) break
-    gerechten.push({ receptId: beste.id, eters, avonden: beste.avonden, gegetenOp: null, vorigeKeer: null })
-  }
-  return gerechten
-}
-
-/**
- * Het gerecht `receptId` vervangen door het volgende beste alternatief, op dezelfde plek en met
- * dezelfde eters en avonden. `overslaan` zijn recepten die al eens zijn weggeveegd (niet terug laten komen).
- * null als er geen alternatief is.
- */
-export function vervang(
-  gerechten: Gerecht[], receptId: string, recepten: Recept[], laatstGegeten: Record<string, string>,
-  verpakkingen: Verpakkingen, eters: number, seed: string, vandaag: Date, overslaan: Set<string>,
-): Gerecht[] | null {
-  const oud = gerechten.find((g) => g.receptId === receptId)
-  if (!oud) return null
-  const rest = gerechten.filter((g) => g !== oud)
-  const nieuw = kandidaten(rest, recepten, laatstGegeten, verpakkingen, eters, seed, vandaag)
-    .find((r) => r.id !== receptId && !overslaan.has(r.id))
-  if (!nieuw) return null
-  return gerechten.map((g) => (g === oud ? { receptId: nieuw.id, eters: oud.eters, avonden: oud.avonden, gegetenOp: null, vorigeKeer: null } : g))
-}

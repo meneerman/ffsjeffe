@@ -24,10 +24,12 @@ button:disabled { opacity: 0.45; cursor: default; }
 /* Achtergrond: twee drijvende gloedvlakken */
 .achtergrond { position: fixed; inset: 0; overflow: hidden; pointer-events: none; z-index: 0; }
 .gloed { position: absolute; border-radius: 50%; will-change: transform; }
-.gloed-violet { width: 420px; height: 420px; top: -180px; right: -160px; background: radial-gradient(circle, rgba(124, 92, 255, 0.36), rgba(124, 92, 255, 0) 65%); animation: drijf-a 14s ease-in-out infinite alternate; translate: calc(var(--scroll, 0) * -0.1px) calc(var(--scroll, 0) * 0.32px); }
-.gloed-warm { width: 360px; height: 360px; bottom: -80px; left: -180px; background: radial-gradient(circle, rgba(255, 140, 90, 0.16), rgba(255, 140, 90, 0) 65%); animation: drijf-b 18s ease-in-out infinite alternate; translate: calc(var(--scroll, 0) * 0.14px) calc(var(--scroll, 0) * -0.28px); }
-@keyframes drijf-a { to { transform: translate(-70px, 60px) scale(1.12); } }
-@keyframes drijf-b { to { transform: translate(80px, -90px) scale(0.9); } }
+.gloed-violet { width: 420px; height: 420px; top: -180px; right: -160px; background: radial-gradient(circle, rgba(124, 92, 255, 0.36), rgba(124, 92, 255, 0) 65%); animation: drijf-a 14s ease-in-out infinite alternate, adem 9s ease-in-out infinite alternate; translate: calc(var(--scroll, 0) * -0.1px) calc(var(--scroll, 0) * 0.32px); }
+.gloed-warm { width: 360px; height: 360px; bottom: -80px; left: -180px; background: radial-gradient(circle, rgba(255, 140, 90, 0.16), rgba(255, 140, 90, 0) 65%); animation: drijf-b 18s ease-in-out infinite alternate, adem 11s ease-in-out -4s infinite alternate; translate: calc(var(--scroll, 0) * 0.14px) calc(var(--scroll, 0) * -0.28px); }
+@keyframes drijf-a { to { transform: translate(-90px, 80px) scale(1.12); } }
+@keyframes drijf-b { to { transform: translate(100px, -110px) scale(0.9); } }
+/* in rust ademt de gloed: langzaam groter en helderder, en terug (samen met drijven en scrollen) */
+@keyframes adem { from { scale: 0.9; opacity: 0.65; } to { scale: 1.22; opacity: 1; } }
 @media (prefers-reduced-motion: reduce) {
   .gloed { animation: none; translate: none; }
   * { transition-duration: 0.01ms !important; animation-duration: 0.01ms !important; }

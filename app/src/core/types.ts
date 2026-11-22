@@ -12,6 +12,8 @@ export type Recept = {
   invriezen: boolean
   porties: number
   tijdMinuten: number
+  /** wat een dag (of nacht) van tevoren moet gebeuren, kort: "24 uur marineren" */
+  vooraf: string | null
   /** standaard aantal avonden waarvoor je dit gerecht kookt (batch: meer dan 1); per gerecht aan te passen */
   avonden: number
   bron: string | null

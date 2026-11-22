@@ -264,3 +264,5 @@ footer { margin-top: 40px; text-align: center; }
 .zoek-leeg { display: grid; justify-items: start; gap: 12px; margin-top: 12px; }
 .gevonden { color: var(--accent); }
 .receptregel { display: flex; flex-direction: column; }
+
+.chip.vooraf { color: #ffd9a8; border-color: rgba(255, 190, 120, 0.35); background: rgba(255, 190, 120, 0.08); }

@@ -6,6 +6,7 @@ export function sleutel(naam: string): string {
   return naam.trim().toLowerCase().replace(/\s+/g, ' ')
 }
 
+export const MAX_VOORAF = 40
 const VASTE_SYNONIEMEN: Record<string, string> = { teentje: 'teen', snufje: 'snuf' }
 
 /**
@@ -119,6 +120,9 @@ export function parseRecept(pad: string, markdown: string): Recept | ReceptFout 
   }
 
   const titel = pad.split('/').pop()!.replace(/\.md$/, '')
+  if (d.vooraf !== undefined && d.vooraf !== null && typeof d.vooraf !== 'string') return fout('vooraf moet een korte tekst zijn, bijv. "24 uur marineren"')
+  const vooraf = typeof d.vooraf === 'string' && d.vooraf.trim() ? d.vooraf.trim() : null
+  if (vooraf && vooraf.length > MAX_VOORAF) return fout(`vooraf is te lang (max ${MAX_VOORAF} tekens): houd het kort, bijv. "24 uur marineren"`)
   const bron = typeof d.bron === 'string' && /^https?:\/\//i.test(d.bron.trim()) ? d.bron.trim() : null
   return {
     id: titel,
@@ -127,6 +131,7 @@ export function parseRecept(pad: string, markdown: string): Recept | ReceptFout 
     invriezen: invriezen === true,
     porties: d.porties,
     tijdMinuten: isGeheel(d.tijd, 0) ? d.tijd : 0,
+    vooraf,
     avonden,
     bron,
     ingredienten,

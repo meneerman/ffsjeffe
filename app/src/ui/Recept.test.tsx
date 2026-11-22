@@ -190,3 +190,16 @@ test('invriesbaar recept toont een chip, ander niet', async () => {
   render(<ReceptPagina recept={recept2(d, PASTA)} data={d} repo={new NepRepo()} naam="Menno" />)
   expect(screen.queryByText('❄ Invriesbaar')).toBeNull()
 })
+
+test('vooraf staat als chip bij de bereidingstijd', async () => {
+  const d = await data()
+  const r = { ...recept2(d), vooraf: 'een nacht weken' }
+  render(<ReceptPagina recept={r} data={d} repo={new NepRepo()} naam="Menno" />)
+  expect(screen.getByText('⏳ Vooraf: een nacht weken')).toBeTruthy()
+})
+
+test('zonder vooraf geen chip', async () => {
+  const d = await data()
+  render(<ReceptPagina recept={recept2(d)} data={d} repo={new NepRepo()} naam="Menno" />)
+  expect(screen.queryByText(/Vooraf/)).toBeNull()
+})

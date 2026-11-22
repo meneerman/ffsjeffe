@@ -33,6 +33,7 @@ export function Bereiden({ menu, perId, nu, bezig, wisselGegeten }: {
             g.avonden > 1 && `${g.avonden} avonden`,
             `${aantalPorties(g.eters, g.avonden)} porties`,
             r.tijdMinuten > 0 && `${r.tijdMinuten} min`,
+            r.vooraf && `⏳ ${r.vooraf}`,
           ].filter(Boolean).join(' · ')
           return (
             <motion.li layout variants={lijstItem} initial={false} animate="zichtbaar" key={g.receptId} data-testid="gerecht" className={`gerecht-rij${g.gegetenOp ? ' gegeten' : ''}`}>

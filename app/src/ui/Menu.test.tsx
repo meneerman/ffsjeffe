@@ -720,3 +720,11 @@ test('vooraf staat kort bij de gegevens van het gerecht, in Plannen en in Bereid
   await toon(vast, [], vi.fn(), 'standaard')
   expect(within(kaarten()[0]).getByText(/⏳ een nacht weken/)).toBeTruthy()
 })
+
+test('Plannen is leeg na vastzetten: ook de boodschappenlijst met vinkjes is weg, ook voor regels die je had uitgevinkt', async () => {
+  const repo = vastgezet() // vastgezet met maar één van de boodschappenregels: de rest was uitgevinkt
+  await toon(repo, [], vi.fn(), 'plannen')
+  expect(kaarten()).toHaveLength(0)
+  expect(screen.queryAllByRole('checkbox')).toHaveLength(0)
+  expect(screen.queryByText(/Boodschappen \(/)).toBeNull()
+})

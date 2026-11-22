@@ -50,7 +50,8 @@ export function Menu({ data, repo, naam, herlaad, bijgewerkt, nu = () => new Dat
   const items = boodschappenItems(behoeften(samen, perId), data.verpakkingen)
   // in het nalopen alleen wat nog niet op Keep staat
   const opKeep = new Set(menu?.boodschappen ?? [])
-  const nieuweItems = items.filter((i) => !opKeep.has(i.regel))
+  // alleen als je nu iets plant; zonder gepland gerecht is er niets om na te lopen
+  const nieuweItems = gerechten.length === 0 ? [] : items.filter((i) => !opKeep.has(i.regel))
   // wat je uitvinkt gaat deze ronde niet naar Keep; alleen op dit toestel, tot het vastzetten
   const [uit, setUit] = useState<Set<string>>(new Set())
   const wisselRegel = (regel: string) => setUit((u) => {
@@ -245,7 +246,7 @@ export function Menu({ data, repo, naam, herlaad, bijgewerkt, nu = () => new Dat
         </div>
       )}
 
-      {bereiden && menu ? <Boodschappen titel="In huis (uit Keep)" regels={menu.boodschappen} /> : <NaLopen items={nieuweItems} categorieen={data.categorieen} uit={uit} onWissel={wisselRegel} />}
+      {bereiden && menu ? <Boodschappen titel="In huis (uit Keep)" regels={menu.boodschappen} /> : <NaLopen items={nieuweItems} categorieen={data.categorieen} winkels={data.winkels} uit={uit} onWissel={wisselRegel} />}
 
       {fout && (
         <div className="kaart foutblok">
@@ -298,7 +299,7 @@ export function Menu({ data, repo, naam, herlaad, bijgewerkt, nu = () => new Dat
       <Venster open={bevestigVast} sluit={() => setBevestigVast(false)} label="Naar Keep sturen" ruim>
             <h2 className="kop-klein">Weet je het zeker?</h2>
             <p className="zacht">Dit gaat naar Keep. Vink nog uit wat je al in huis hebt.</p>
-            <NaLopen items={nieuweItems} categorieen={data.categorieen} uit={uit} onWissel={wisselRegel} />
+            <NaLopen items={nieuweItems} categorieen={data.categorieen} winkels={data.winkels} uit={uit} onWissel={wisselRegel} />
             <div className="knoppenrij">
               <button className="knop" onClick={() => setBevestigVast(false)}>Annuleren</button>
               <button className="knop primair" disabled={bezig} onClick={() => { setBevestigVast(false); void zetVast() }}>Ja, naar Keep</button>

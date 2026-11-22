@@ -5,6 +5,7 @@ import type { Recept, Soort } from '../core/types'
 import type { SchermProps } from './App'
 import { receptMeta } from './Menu'
 import { druk, lijstItem } from './beweging'
+import { useSleepVinken } from './useSleepVinken'
 import { useConcept } from './useConcept'
 
 export const SOORT_NAAM: Record<Soort, string> = {
@@ -47,6 +48,7 @@ export function Recepten({ data, repo, naam }: SchermProps) {
   const basis = treffers ? treffers.map((t) => t.recept) : data.recepten
   const groepenZicht = useMemo(() => indelen(basis), [basis])
 
+  const sleep = useSleepVinken((id) => gekozen.has(id), (id, aan) => setGekozen((g) => { const n = new Set(g); if (aan) n.add(id); else n.delete(id); return n }))
   const wissel = (id: string) => setGekozen((g) => { const n = new Set(g); if (n.has(id)) n.delete(id); else n.add(id); return n })
 
   const zetOpMenu = () => {
@@ -122,6 +124,7 @@ export function Recepten({ data, repo, naam }: SchermProps) {
 
       {data.recepten.length === 0 && <p className="kaart">Nog geen recepten. Voeg ze toe in Obsidian in de map <code>recepten</code>.</p>}
 
+      <div {...sleep.lijst}>
       {zichtbaar.map((g) => (
         <section key={g.soort}>
           <h2 className="eyebrow sectie">{SOORT_NAAM[g.soort]}</h2>
@@ -130,9 +133,9 @@ export function Recepten({ data, repo, naam }: SchermProps) {
               const al = opMenu.has(r.id)
               const aan = al || gekozen.has(r.id)
               return (
-                <motion.li key={r.id} layout variants={lijstItem} initial={false} animate="zichtbaar" className={al ? 'op-menu' : ''}>
+                <motion.li key={r.id} data-vink-id={r.id} {...(al ? { 'data-vink-uit': '' } : {})} layout variants={lijstItem} initial={false} animate="zichtbaar" className={al ? 'op-menu' : ''}>
                   <label>
-                    <input type="checkbox" checked={aan} disabled={al} onChange={() => wissel(r.id)} aria-label={r.titel} />
+                    <input type="checkbox" checked={aan} disabled={al} onChange={() => wissel(r.id)} aria-label={r.titel} {...sleep.vinkvak(r.id)} />
                     <span className="receptregel">
                       <span className="titel">{r.titel}</span>
                       <span className="zacht klein">{al ? 'op het menu' : receptMeta(r, menu?.laatstGegeten ?? {}, nu, standaard, r.avonden)}</span>
@@ -146,6 +149,7 @@ export function Recepten({ data, repo, naam }: SchermProps) {
           </ul>
         </section>
       ))}
+      </div>
 
       <div className="onderbalk">
         <button className="pil" onClick={zetOpMenu} disabled={gekozen.size === 0}>

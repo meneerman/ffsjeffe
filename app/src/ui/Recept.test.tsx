@@ -1,4 +1,4 @@
-import { cleanup, render, screen, within } from '@testing-library/react'
+import { cleanup, fireEvent, render, screen, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { afterEach, beforeEach, expect, test, vi } from 'vitest'
 import { gerecht, ing, recept } from '../core/testdata'
@@ -202,4 +202,18 @@ test('zonder vooraf geen chip', async () => {
   const d = await data()
   render(<ReceptPagina recept={recept2(d)} data={d} repo={new NepRepo()} naam="Menno" />)
   expect(screen.queryByText(/Vooraf/)).toBeNull()
+})
+
+test('slepen over de ingrediëntvinkjes vinkt meerdere regels in één keer af', async () => {
+  const d = await data()
+  render(<ReceptPagina recept={recept2(d)} data={d} repo={new NepRepo()} naam="Menno" />)
+  const lijst = screen.getAllByRole('list').find((l) => l.classList.contains('vinklijst'))!
+  const vakken = within(lijst).getAllByRole('checkbox') as HTMLInputElement[]
+  const rijen = vakken.map((v) => v.closest('li')!) as HTMLElement[]
+  document.elementFromPoint = ((_x: number, y: number) => rijen[Math.min(rijen.length - 1, Math.floor(y / 50))].querySelector('input')) as typeof document.elementFromPoint
+  fireEvent.pointerDown(vakken[0], { clientX: 10, clientY: 5, pointerId: 1, button: 0 })
+  fireEvent.pointerMove(vakken[0], { clientX: 10, clientY: 2 * 50 + 5, pointerId: 1 })
+  fireEvent.pointerUp(vakken[0], { pointerId: 1 })
+  expect(vakken.slice(0, 3).every((v) => v.checked)).toBe(true)
+  expect(vakken.slice(3).some((v) => v.checked)).toBe(false)
 })

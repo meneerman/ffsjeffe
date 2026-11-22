@@ -5,6 +5,7 @@ import type { Recept } from '../core/types'
 import { lees, schrijf } from './opslag'
 import { Stapper } from './Stapper'
 import { useConcept } from './useConcept'
+import { useSleepVinken } from './useSleepVinken'
 import type { AppData, Repo } from './useData'
 
 type Lock = { release: () => Promise<void>; released?: boolean; addEventListener?: (t: 'release', f: () => void) => void }
@@ -77,6 +78,10 @@ export function ReceptPagina({ recept: r, data, repo, naam }: { recept: Recept; 
       return nieuw
     })
   }
+  const zetVink = (soort: 'i' | 'v') => (id: string, aan: boolean) => { if (vg[soort].includes(Number(id)) !== aan) wissel(soort, Number(id)) }
+  const sleepI = useSleepVinken((id) => vg.i.includes(Number(id)), zetVink('i'))
+  const sleepV = useSleepVinken((id) => vg.v.includes(Number(id)), zetVink('v'))
+
   const huidigeStap = r.stappen.findIndex((_, n) => !vg.s.includes(n))
 
   return (
@@ -104,13 +109,13 @@ export function ReceptPagina({ recept: r, data, repo, naam }: { recept: Recept; 
       )}
 
       <div className="eyebrow sectie">Ingrediënten</div>
-      <ul className="vinklijst">
+      <ul className="vinklijst" {...sleepI.lijst}>
         {r.ingredienten.map((i, n) => {
           const tekst = toonIngredient(i, factor)
           return (
-            <li key={n} className={vg.i.includes(n) ? 'af' : ''}>
+            <li key={n} data-vink-id={String(n)} className={vg.i.includes(n) ? 'af' : ''}>
               <label>
-                <input type="checkbox" checked={vg.i.includes(n)} onChange={() => wissel('i', n)} aria-label={tekst} />
+                <input type="checkbox" checked={vg.i.includes(n)} onChange={() => wissel('i', n)} aria-label={tekst} {...sleepI.vinkvak(String(n))} />
                 <span>{tekst}</span>
               </label>
             </li>
@@ -121,13 +126,13 @@ export function ReceptPagina({ recept: r, data, repo, naam }: { recept: Recept; 
       {r.voorbereiding.length > 0 && (
         <>
           <div className="eyebrow sectie">Voorbereiding</div>
-          <ul className="vinklijst voorbereiding">
+          <ul className="vinklijst voorbereiding" {...sleepV.lijst}>
             {r.voorbereiding.map((v, n) => {
               const tekst = schaalStap(v, factor)
               return (
-                <li key={n} className={vg.v.includes(n) ? 'af' : ''}>
+                <li key={n} data-vink-id={String(n)} className={vg.v.includes(n) ? 'af' : ''}>
                   <label>
-                    <input type="checkbox" checked={vg.v.includes(n)} onChange={() => wissel('v', n)} aria-label={tekst} />
+                    <input type="checkbox" checked={vg.v.includes(n)} onChange={() => wissel('v', n)} aria-label={tekst} {...sleepV.vinkvak(String(n))} />
                     <span>{tekst}</span>
                   </label>
                 </li>

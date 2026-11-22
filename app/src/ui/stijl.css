@@ -266,3 +266,7 @@ footer { margin-top: 40px; text-align: center; }
 .receptregel { display: flex; flex-direction: column; }
 
 .chip.vooraf { color: #ffd9a8; border-color: rgba(255, 190, 120, 0.35); background: rgba(255, 190, 120, 0.08); }
+
+/* slepen over vinkjes: alleen het vinkje zelf vangt het slepen, de rest van de rij scrolt gewoon */
+.vinklijst input, .nalopen-groep input { touch-action: none; }
+.vinklijst label, .nalopen-groep label { -webkit-user-select: none; user-select: none; }

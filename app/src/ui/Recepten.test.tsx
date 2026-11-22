@@ -152,3 +152,14 @@ test('de zoekopdracht blijft staan als je een recept opent en terugkomt', async 
   expect(zoek().value).toBe('broccoli')
   expect(titelsNu()).toHaveLength(2)
 })
+
+test('slepen over de vinkjes in Alle recepten kiest meerdere recepten tegelijk', async () => {
+  await toon(null)
+  const vakken = screen.getAllByRole('checkbox') as HTMLInputElement[]
+  const rijen = vakken.map((v) => v.closest('li')!) as HTMLElement[]
+  document.elementFromPoint = ((_x: number, y: number) => rijen[Math.min(rijen.length - 1, Math.floor(y / 50))].querySelector('input')) as typeof document.elementFromPoint
+  fireEvent.pointerDown(vakken[0], { clientX: 10, clientY: 5, pointerId: 1, button: 0 })
+  fireEvent.pointerMove(vakken[0], { clientX: 10, clientY: 2 * 50 + 5, pointerId: 1 })
+  fireEvent.pointerUp(vakken[0], { pointerId: 1 })
+  await screen.findByRole('button', { name: /Op het menu \(3\)/ })
+})

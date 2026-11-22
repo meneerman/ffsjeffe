@@ -184,7 +184,7 @@ footer { margin-top: 40px; text-align: center; }
 .stapper .icoon { font-size: 11px; opacity: 0.55; filter: grayscale(1); }
 
 /* Alle recepten */
-.filters { display: flex; gap: 8px; overflow-x: auto; padding-bottom: 4px; margin: 4px -16px 0; padding-left: 16px; padding-right: 16px; scrollbar-width: none; }
+.filters { display: flex; gap: 8px; overflow-x: auto; padding-bottom: 4px; margin: 0 -16px 0; padding-left: 16px; padding-right: 16px; scrollbar-width: none; }
 .filters .chip { flex: none; cursor: pointer; color: var(--tekst); }
 .receptlijst li { display: flex; align-items: center; }
 .receptlijst li label { flex: 1; }
@@ -253,13 +253,14 @@ footer { margin-top: 40px; text-align: center; }
 .ronde-klaar { display: flex; justify-content: center; margin: 28px 0 8px; }
 
 /* zoeken in Alle recepten: blijft bovenaan staan terwijl je scrolt */
-.zoekbalk { position: sticky; top: 8px; z-index: 6; display: flex; align-items: center; margin: 4px 0 6px; }
-.zoekbalk input { width: 100%; padding: 13px 46px 13px 44px; font: inherit; font-size: 16px; color: var(--tekst); background: rgba(22, 22, 27, 0.92); border: 1px solid var(--rand); border-radius: 99px; outline: none; backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px); transition: border-color 0.2s; appearance: none; -webkit-appearance: none; }
-.zoekbalk input:focus { border-color: rgba(185, 168, 255, 0.55); }
-.zoekbalk input::-webkit-search-cancel-button { -webkit-appearance: none; display: none; }
-.zoek-icoon { position: absolute; left: 16px; color: var(--zacht); pointer-events: none; }
-.zoek-wis { position: absolute; right: 6px; width: 36px; height: 36px; border: 0; border-radius: 50%; background: rgba(255, 255, 255, 0.08); color: var(--tekst); font-size: 20px; line-height: 1; }
-.zoek-stand { margin: 2px 4px 8px; }
-.zoek-leeg { display: grid; justify-items: start; gap: 10px; margin-top: 8px; }
+.zoekbalk { position: sticky; top: 0; z-index: 6; display: flex; align-items: center; margin: 0 -16px; padding: 10px 16px 14px; background: linear-gradient(to bottom, var(--bg) 0%, var(--bg) 70%, transparent 100%); }
+.zoekbalk input { width: 100%; height: 46px; padding: 0 46px 0 46px; font: inherit; font-size: 16px; line-height: 1.2; color: var(--tekst); background: rgba(24, 24, 30, 0.9); border: 1px solid var(--rand); border-radius: 99px; outline: none; backdrop-filter: blur(14px); -webkit-backdrop-filter: blur(14px); box-shadow: 0 6px 20px rgba(0, 0, 0, 0.28); transition: border-color 0.2s, box-shadow 0.2s; appearance: none; -webkit-appearance: none; }
+.zoekbalk input::placeholder { color: var(--zacht); opacity: 1; }
+.zoekbalk input:focus { border-color: rgba(185, 168, 255, 0.55); box-shadow: 0 6px 20px rgba(0, 0, 0, 0.28), 0 0 0 3px rgba(185, 168, 255, 0.12); }
+.zoekbalk input::-webkit-search-cancel-button, .zoekbalk input::-webkit-search-decoration { -webkit-appearance: none; display: none; }
+.zoek-icoon { position: absolute; left: 16px; z-index: 1; color: var(--zacht); pointer-events: none; }
+.zoek-wis { position: absolute; right: 5px; z-index: 1; display: grid; place-items: center; width: 36px; height: 36px; padding: 0; border: 0; border-radius: 50%; background: rgba(255, 255, 255, 0.1); color: var(--tekst); font-size: 20px; line-height: 1; }
+.zoek-stand { margin: -2px 6px 12px; }
+.zoek-leeg { display: grid; justify-items: start; gap: 12px; margin-top: 12px; }
 .gevonden { color: var(--accent); }
 .receptregel { display: flex; flex-direction: column; }

@@ -85,6 +85,7 @@ export function ReceptPagina({ recept: r, data, repo, naam }: { recept: Recept; 
       <h1 className="kop kook-kop">{r.titel}</h1>
       <div className="chips">
         {r.tijdMinuten > 0 && <span className="chip">{r.tijdMinuten} min</span>}
+        {r.vooraf && <span className="chip vooraf">⏳ Vooraf: {r.vooraf}</span>}
         <Stapper naam="eters" icoon="👤" waarde={eters} wijzig={(n) => zet('eters', n)} />
         <Stapper naam="avonden" icoon="☾" waarde={avonden} wijzig={(n) => zet('avonden', n)} />
         {avonden > 1 && <span className="chip accent">{aantalPorties(eters, avonden)} porties</span>}

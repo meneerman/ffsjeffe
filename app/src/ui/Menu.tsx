@@ -25,6 +25,7 @@ export function receptMeta(r: Recept, laatstGegeten: Record<string, string>, nu:
   return [
     r.soort !== 'avondeten' && r.soort,
     r.tijdMinuten > 0 && `${r.tijdMinuten} min`,
+    r.vooraf && `⏳ ${r.vooraf}`,
     avonden > 1 && `${aantalPorties(eters, avonden)} porties`,
     geledenTekst(laatstGegeten[r.id], nu),
     r.invriezen && '❄ invriesbaar',

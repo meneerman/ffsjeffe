@@ -141,3 +141,12 @@ test('parseCategorieen slaat onbekende categorieën en rommel over en geeft {} b
   expect(parseCategorieen('---\n: [kapot\n---\n')).toEqual({})
   expect(parseCategorieen('geen frontmatter')).toEqual({})
 })
+
+test('vooraf: korte tekst over wat een dag van tevoren moet gebeuren', () => {
+  const r = (fm: string) => recept(`soort: avondeten\ninvriezen: nee\nporties: 4\ningredienten:\n  - 1 ui\n${fm}`, '## Bereiding\n1. Kook.')
+  expect((r('vooraf: 24 uur marineren') as Recept).vooraf).toBe('24 uur marineren')
+  expect((r('') as Recept).vooraf).toBeNull()
+  expect((r('vooraf: ""') as Recept).vooraf).toBeNull()
+  expect(fout(r('vooraf: 24'))).toBe(true)
+  expect(fout(r(`vooraf: ${'x'.repeat(41)}`))).toBe(true)
+})

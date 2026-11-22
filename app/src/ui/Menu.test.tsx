@@ -706,3 +706,17 @@ test('stapel: Erbij vlak na Nee zet precies de volgende kaart erbij', async () =
   fireEvent.click(within(dlg()).getByRole('button', { name: 'Erbij' }))
   await waitFor(() => expect(titels()).toEqual([tweede]))
 })
+
+test('vooraf staat kort bij de gegevens van het gerecht, in Plannen en in Bereiden', async () => {
+  const repo = new NepRepo()
+  repo.recepten_ = repo.recepten_.map((r) => (r.id === PASTA ? { ...r, vooraf: 'een nacht weken' } : r))
+  plan(repo, [gerecht(PASTA, 2)])
+  await toon(repo)
+  expect(within(kaarten()[0]).getByText(/⏳ een nacht weken/)).toBeTruthy()
+  cleanup()
+  const vast = new NepRepo()
+  vast.recepten_ = vast.recepten_.map((r) => (r.id === PASTA ? { ...r, vooraf: 'een nacht weken' } : r))
+  vast.menu_ = { menu: menu([gerecht(PASTA, 2)], { boodschappen: ['Pasta 200 g'] }), sha: 's' }
+  await toon(vast, [], vi.fn(), 'standaard')
+  expect(within(kaarten()[0]).getByText(/⏳ een nacht weken/)).toBeTruthy()
+})

@@ -172,3 +172,11 @@ test('winkeliconen bij een recept in Alle recepten als er ingrediënten niet bij
   expect(within(rij(PASTA)).getByLabelText('Niet bij Albert Heijn: spinazie')).toBeTruthy()
   expect(within(rij(WRAPS)).queryByLabelText(/Niet bij/)).toBeNull()
 })
+
+test('gerechten kiezen en op het menu zetten brengt je terug in Plannen, ook als je eerder Bereiden had', async () => {
+  sessionStorage.setItem('ffsjeffe.modus', 'bereiden')
+  await toon(null)
+  await userEvent.click(vinkje('Tiramisu'))
+  await userEvent.click(screen.getByRole('button', { name: /Op het menu/ }))
+  expect(sessionStorage.getItem('ffsjeffe.modus')).toBe('plannen')
+})

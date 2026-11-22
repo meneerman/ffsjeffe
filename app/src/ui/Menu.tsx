@@ -12,6 +12,7 @@ import { Bereiden, geledenTekst } from './Bereiden'
 import { Boodschappen } from './Boodschappen'
 import { NaLopen } from './NaLopen'
 import { Venster } from './Venster'
+import { leesModus, schrijfModus, type Modus } from './modus'
 import { ReceptWinkelbordjes } from './Winkel'
 import type { Winkels } from '../core/winkels'
 import { druk, lijstItem, snel } from './beweging'
@@ -88,7 +89,7 @@ export function Menu({ data, repo, naam, herlaad, bijgewerkt, nu = () => new Dat
   const zetVast = async () => {
     const m = vastzetten(menu, samen, regels, naam, nu())
     if (await schrijf(m, `Menu vastgezet door ${naam}`)) {
-      setModus('bereiden')
+      kiesModus('bereiden')
       setUit(new Set())
       concept.wis()
       herlaad()
@@ -144,7 +145,8 @@ export function Menu({ data, repo, naam, herlaad, bijgewerkt, nu = () => new Dat
   // gegeten gerechten onderaan
   const getoond = [...gerechten].sort((a, b) => Number(!!vastgezet.get(a.receptId)?.gegetenOp) - Number(!!vastgezet.get(b.receptId)?.gegetenOp))
   // Bereiden: het vastgezette menu, de boodschappen zijn gedaan. Plannen: het concept voor de volgende keer.
-  const [modus, setModus] = useState<'bereiden' | 'plannen' | null>(null)
+  const [modus, setModus] = useState<Modus | null>(leesModus)
+  const kiesModus = (m: Modus) => { setModus(m); schrijfModus(m) }
   const kanBereiden = !!menu && menu.gerechten.length > 0
   const bereiden = kanBereiden && (modus ?? (concept.heeftConcept ? 'plannen' : 'bereiden')) === 'bereiden'
   const [teVerwijderen, setTeVerwijderen] = useState<string | null>(null)
@@ -172,10 +174,10 @@ export function Menu({ data, repo, naam, herlaad, bijgewerkt, nu = () => new Dat
       <p className="kop-sub">{bereiden ? 'Wat we bereiden' : 'Wat eten we deze keer?'}</p>
       {kanBereiden && (
         <div className="modus" role="tablist" aria-label="Modus">
-          <motion.button whileTap={druk} role="tab" aria-selected={!bereiden} className={!bereiden ? 'aan' : ''} onClick={() => setModus('plannen')}>
+          <motion.button whileTap={druk} role="tab" aria-selected={!bereiden} className={!bereiden ? 'aan' : ''} onClick={() => kiesModus('plannen')}>
             {!bereiden && <motion.span layoutId="modus-blok" className="modus-blok" aria-hidden="true" transition={snel} />}<span>Plannen</span>
           </motion.button>
-          <motion.button whileTap={druk} role="tab" aria-selected={bereiden} className={bereiden ? 'aan' : ''} onClick={() => setModus('bereiden')}>
+          <motion.button whileTap={druk} role="tab" aria-selected={bereiden} className={bereiden ? 'aan' : ''} onClick={() => kiesModus('bereiden')}>
             {bereiden && <motion.span layoutId="modus-blok" className="modus-blok" aria-hidden="true" transition={snel} />}<span>Bereiden</span>
           </motion.button>
         </div>

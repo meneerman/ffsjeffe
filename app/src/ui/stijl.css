@@ -251,3 +251,15 @@ footer { margin-top: 40px; text-align: center; }
 
 /* Keep leegmaken: klein, onderaan Bereiden */
 .ronde-klaar { display: flex; justify-content: center; margin: 28px 0 8px; }
+
+/* zoeken in Alle recepten: blijft bovenaan staan terwijl je scrolt */
+.zoekbalk { position: sticky; top: 8px; z-index: 6; display: flex; align-items: center; margin: 4px 0 6px; }
+.zoekbalk input { width: 100%; padding: 13px 46px 13px 44px; font: inherit; font-size: 16px; color: var(--tekst); background: rgba(22, 22, 27, 0.92); border: 1px solid var(--rand); border-radius: 99px; outline: none; backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px); transition: border-color 0.2s; appearance: none; -webkit-appearance: none; }
+.zoekbalk input:focus { border-color: rgba(185, 168, 255, 0.55); }
+.zoekbalk input::-webkit-search-cancel-button { -webkit-appearance: none; display: none; }
+.zoek-icoon { position: absolute; left: 16px; color: var(--zacht); pointer-events: none; }
+.zoek-wis { position: absolute; right: 6px; width: 36px; height: 36px; border: 0; border-radius: 50%; background: rgba(255, 255, 255, 0.08); color: var(--tekst); font-size: 20px; line-height: 1; }
+.zoek-stand { margin: 2px 4px 8px; }
+.zoek-leeg { display: grid; justify-items: start; gap: 10px; margin-top: 8px; }
+.gevonden { color: var(--accent); }
+.receptregel { display: flex; flex-direction: column; }

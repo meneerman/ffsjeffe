@@ -5,6 +5,7 @@ import type { Recept, Soort } from '../core/types'
 import type { SchermProps } from './App'
 import { receptMeta } from './Menu'
 import { druk, lijstItem } from './beweging'
+import { schrijfModus } from './modus'
 import { useSleepVinken } from './useSleepVinken'
 import { ReceptWinkelbordjes } from './Winkel'
 import { useConcept } from './useConcept'
@@ -58,6 +59,7 @@ export function Recepten({ data, repo, naam }: SchermProps) {
       ...huidig,
       ...volgorde.filter((r) => !huidig.some((g) => g.receptId === r.id)).map((r) => ({ receptId: r.id, eters: standaard, avonden: r.avonden, gegetenOp: null, vorigeKeer: null })),
     ])
+    schrijfModus('plannen') // je was aan het plannen; daar kom je ook terug
     location.hash = '#/'
   }
 

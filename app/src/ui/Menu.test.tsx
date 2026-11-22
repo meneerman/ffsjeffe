@@ -740,3 +740,24 @@ test('winkeliconen op het gerecht in Plannen en in Bereiden', async () => {
   await toon(vast, [], vi.fn(), 'standaard')
   expect(within(kaarten()[0]).getByLabelText('Niet bij Albert Heijn: spinazie')).toBeTruthy()
 })
+
+test('de keuze Plannen of Bereiden blijft staan als je naar een ander scherm gaat en terugkomt', async () => {
+  const repo = vastgezet()
+  await toon(repo, [], vi.fn(), 'standaard') // vastgezet menu opent in Bereiden
+  await userEvent.click(screen.getByRole('tab', { name: 'Plannen' }))
+  expect(screen.getByRole('tab', { name: 'Plannen' }).getAttribute('aria-selected')).toBe('true')
+  cleanup() // naar Alle recepten en terug: het menu-scherm wordt opnieuw opgebouwd
+  await toon(repo, [], vi.fn(), 'standaard')
+  expect(screen.getByRole('tab', { name: 'Plannen' }).getAttribute('aria-selected')).toBe('true')
+  expect(kaarten()).toHaveLength(0)
+})
+
+test('terug in Bereiden blijft Bereiden staan', async () => {
+  const repo = vastgezet()
+  repo.concept_ = { concept: { gerechten: [gerecht(WRAPS, 5)], sinds: '2026-11-21T09:00:00.000Z', door: 'Partner' }, sha: 'c0' }
+  await toon(repo, [], vi.fn(), 'standaard') // met een concept opent hij in Plannen
+  await userEvent.click(screen.getByRole('tab', { name: 'Bereiden' }))
+  cleanup()
+  await toon(repo, [], vi.fn(), 'standaard')
+  expect(screen.getByRole('tab', { name: 'Bereiden' }).getAttribute('aria-selected')).toBe('true')
+})

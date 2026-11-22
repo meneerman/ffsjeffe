@@ -6,6 +6,7 @@ import type { SchermProps } from './App'
 import { receptMeta } from './Menu'
 import { druk, lijstItem } from './beweging'
 import { useSleepVinken } from './useSleepVinken'
+import { ReceptWinkelbordjes } from './Winkel'
 import { useConcept } from './useConcept'
 
 export const SOORT_NAAM: Record<Soort, string> = {
@@ -137,7 +138,7 @@ export function Recepten({ data, repo, naam }: SchermProps) {
                   <label>
                     <input type="checkbox" checked={aan} disabled={al} onChange={() => wissel(r.id)} aria-label={r.titel} {...sleep.vinkvak(r.id)} />
                     <span className="receptregel">
-                      <span className="titel">{r.titel}</span>
+                      <span className="titel">{r.titel}<ReceptWinkelbordjes recept={r} winkels={data.winkels} /></span>
                       <span className="zacht klein">{al ? 'op het menu' : receptMeta(r, menu?.laatstGegeten ?? {}, nu, standaard, r.avonden)}</span>
                       {(treffersPerId.get(r.id)?.length ?? 0) > 0 && <span className="gevonden klein">met {treffersPerId.get(r.id)!.join(', ')}</span>}
                     </span>

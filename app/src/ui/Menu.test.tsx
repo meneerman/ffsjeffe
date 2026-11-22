@@ -728,3 +728,15 @@ test('Plannen is leeg na vastzetten: ook de boodschappenlijst met vinkjes is weg
   expect(screen.queryAllByRole('checkbox')).toHaveLength(0)
   expect(screen.queryByText(/Boodschappen \(/)).toBeNull()
 })
+
+test('winkeliconen op het gerecht in Plannen en in Bereiden', async () => {
+  const repo = new NepRepo()
+  plan(repo, [gerecht(PASTA, 2)])
+  await toon(repo)
+  expect(within(kaarten()[0]).getByLabelText('Niet bij Lidl: zalmfilet, spinazie')).toBeTruthy()
+  cleanup()
+  const vast = new NepRepo()
+  vast.menu_ = { menu: menu([gerecht(PASTA, 2)], { boodschappen: ['Pasta 200 g'] }), sha: 's' }
+  await toon(vast, [], vi.fn(), 'standaard')
+  expect(within(kaarten()[0]).getByLabelText('Niet bij Albert Heijn: spinazie')).toBeTruthy()
+})

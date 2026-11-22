@@ -12,6 +12,8 @@ import { Bereiden, geledenTekst } from './Bereiden'
 import { Boodschappen } from './Boodschappen'
 import { NaLopen } from './NaLopen'
 import { Venster } from './Venster'
+import { ReceptWinkelbordjes } from './Winkel'
+import type { Winkels } from '../core/winkels'
 import { druk, lijstItem, snel } from './beweging'
 import { KeepStatusMelding } from './KeepStatus'
 import { Toevoegen } from './Toevoegen'
@@ -204,7 +206,7 @@ export function Menu({ data, repo, naam, herlaad, bijgewerkt, nu = () => new Dat
       )}
 
       {bereiden && menu ? (
-        <Bereiden menu={menu} perId={perId} nu={nu()} bezig={bezig} wisselGegeten={wisselGegeten} />
+        <Bereiden menu={menu} perId={perId} nu={nu()} bezig={bezig} wisselGegeten={wisselGegeten} winkels={data.winkels} />
       ) : data.recepten.length === 0 ? (
         <p className="kaart">Nog geen recepten. Voeg ze toe in Obsidian in de map <code>recepten</code>.</p>
       ) : (
@@ -214,6 +216,7 @@ export function Menu({ data, repo, naam, herlaad, bijgewerkt, nu = () => new Dat
             <GerechtKaart
               key={g.receptId}
               recept={perId[g.receptId]}
+              winkels={data.winkels}
               eters={g.eters}
               avonden={g.avonden}
               meta={receptMeta(perId[g.receptId], laatstGegeten, nu(), g.eters, g.avonden)}
@@ -276,6 +279,7 @@ export function Menu({ data, repo, naam, herlaad, bijgewerkt, nu = () => new Dat
           opties={kandidaten(gerechten, data.recepten, laatstGegeten, data.verpakkingen, standaard, zaadVoor(menu), nu())}
           meta={(r) => receptMeta(r, laatstGegeten, nu(), standaard, r.avonden)}
           sluit={() => setToevoegen(false)}
+          winkels={data.winkels}
           kies={(r) => {
             concept.wijzig((huidig) => huidig.some((g) => g.receptId === r.id) ? huidig : [...huidig, { receptId: r.id, eters: standaard, avonden: r.avonden, gegetenOp: null, vorigeKeer: null }])
             setToevoegen(false)
@@ -319,6 +323,7 @@ export function Menu({ data, repo, naam, herlaad, bijgewerkt, nu = () => new Dat
 }
 
 function GerechtKaart(p: {
+  winkels: Winkels
   recept: Recept; eters: number; avonden: number; meta: string; gegetenOp: string | null; kanGegeten: boolean; nu: Date
   tip: PakOp | null; pasTipToe: (t: PakOp) => void
   bezig: boolean; vraagVerwijder: () => void; zetEters: (n: number) => void; zetAvonden: (n: number) => void; wisselGegeten: () => void
@@ -330,6 +335,7 @@ function GerechtKaart(p: {
         <div className="gerecht-kop">
           <div className="gerecht-tekst">
             <a className="titel" href={`#/recept/${encodeURIComponent(r.id)}`}>{r.titel}</a>
+            <ReceptWinkelbordjes recept={r} winkels={p.winkels} />
             <div className="meta zacht">{p.gegetenOp ? `✓ gegeten ${geledenTekst(p.gegetenOp, p.nu)}` : p.meta}</div>
           </div>
           <button className="verwijder-knop" aria-label={`Verwijder ${r.titel}`} onClick={p.vraagVerwijder}>×</button>

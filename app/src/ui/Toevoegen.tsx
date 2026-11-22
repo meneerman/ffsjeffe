@@ -1,7 +1,9 @@
 import { AnimatePresence, animate, motion, useIsPresent, useMotionValue, useMotionValueEvent, useTransform, type MotionValue } from 'motion/react'
 import { useEffect, useRef, useState } from 'react'
 import type { Recept } from '../core/types'
+import type { Winkels } from '../core/winkels'
 import { achtergrondVervaag, beslis, druk, sheet, snel } from './beweging'
+import { ReceptWinkelbordjes } from './Winkel'
 
 type Richting = 'erbij' | 'nee'
 
@@ -10,7 +12,7 @@ type Richting = 'erbij' | 'nee'
  * Slepen loopt via een motion value (geen React-render per frame). Elke tik besluit meteen over de bovenste kaart;
  * die vliegt weg terwijl de volgende al klaarstaat, dus snel achter elkaar tikken slaat geen kaart over.
  */
-export function Toevoegen({ opties, kies, sluit, meta }: { opties: Recept[]; kies: (r: Recept) => void; sluit: () => void; meta: (r: Recept) => string }) {
+export function Toevoegen({ opties, kies, sluit, meta, winkels }: { opties: Recept[]; kies: (r: Recept) => void; sluit: () => void; meta: (r: Recept) => string; winkels: Winkels }) {
   const [i, setI] = useState(0)
   const [richting, setRichting] = useState<Richting>('nee')
   const gekozen = useRef<Recept | null>(null)
@@ -42,11 +44,12 @@ export function Toevoegen({ opties, kies, sluit, meta }: { opties: Recept[]; kie
             <motion.div key={`onder-${onder.id}`} data-testid="deck-kaart" className="deck-kaart onder" style={{ scale: onderSchaal, y: onderY }}>
               <h2 className="kop-klein">{onder.titel}</h2>
               <p className="zacht">{meta(onder)}</p>
+              <ReceptWinkelbordjes recept={onder} winkels={winkels} />
             </motion.div>
           )}
           <AnimatePresence custom={richting} onExitComplete={() => { if (gekozen.current) kies(gekozen.current) }}>
             {boven && !gekozen.current && (
-              <BovensteKaart key={boven.id} recept={boven} meta={meta(boven)} voortgang={voortgang} besluit={vlieg} />
+              <BovensteKaart key={boven.id} recept={boven} meta={meta(boven)} winkels={winkels} voortgang={voortgang} besluit={vlieg} />
             )}
           </AnimatePresence>
           {!boven && <p className="zacht deck-leeg">Geen andere gerechten meer.</p>}
@@ -66,7 +69,7 @@ const uitvliegen = {
   weg: (r: Richting) => ({ x: r === 'erbij' ? 600 : -600, opacity: 0, transition: snel }),
 }
 
-function BovensteKaart({ recept, meta, voortgang, besluit }: { recept: Recept; meta: string; voortgang: MotionValue<number>; besluit: (r: Richting) => void }) {
+function BovensteKaart({ recept, meta, winkels, voortgang, besluit }: { recept: Recept; meta: string; winkels: Winkels; voortgang: MotionValue<number>; besluit: (r: Richting) => void }) {
   const x = useMotionValue(0)
   const rotate = useTransform(x, [-300, 300], [-16, 16])
   const erbij = useTransform(x, [0, 100], [0, 1])
@@ -99,6 +102,7 @@ function BovensteKaart({ recept, meta, voortgang, besluit }: { recept: Recept; m
         <motion.span className="stempel nee" style={{ opacity: nee }}>NEE</motion.span>
         <h2 className="kop-klein">{recept.titel}</h2>
         <p className="zacht">{meta}</p>
+        <ReceptWinkelbordjes recept={recept} winkels={winkels} />
       </div>
     </motion.div>
   )

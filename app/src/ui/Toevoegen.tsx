@@ -30,8 +30,8 @@ export function Toevoegen({ opties, kies, sluit, meta }: { opties: Recept[]; kie
   }
 
   return (
-    <motion.div className="paneel-achtergrond" variants={achtergrondVervaag} initial="verborgen" animate="zichtbaar" onClick={sluit}>
-      <motion.div className="paneel deck-paneel" role="dialog" aria-label="Gerecht toevoegen" variants={sheet} initial="verborgen" animate="zichtbaar" onClick={(e) => e.stopPropagation()}>
+    <motion.div className="paneel-achtergrond" variants={achtergrondVervaag} initial="verborgen" animate="zichtbaar" exit="verborgen" onClick={sluit}>
+      <motion.div className="paneel deck-paneel" role="dialog" aria-label="Gerecht toevoegen" variants={sheet} initial="verborgen" animate="zichtbaar" exit="verborgen" onClick={(e) => e.stopPropagation()}>
         <div className="deck-kop">
           <div className="eyebrow">gerecht erbij</div>
           <button className="link-zacht" onClick={sluit}>Sluiten</button>
@@ -79,7 +79,7 @@ function BovensteKaart({ recept, meta, voortgang, besluit }: { recept: Recept; m
 
   return (
     <motion.div
-      data-testid="bovenste"
+      data-testid={actief ? 'bovenste' : 'uitvliegend'}
       className="deck-kaart-wrap"
       style={{ x, rotate }}
       initial={{ scale: 0.94, y: 10 }}
@@ -94,7 +94,7 @@ function BovensteKaart({ recept, meta, voortgang, besluit }: { recept: Recept; m
         else animate(x, 0, snel)
       }}
     >
-      <div data-testid="deck-kaart" className="deck-kaart boven">
+      <div data-testid={actief ? 'deck-kaart' : undefined} className="deck-kaart boven">
         <motion.span className="stempel erbij" style={{ opacity: erbij }}>ERBIJ</motion.span>
         <motion.span className="stempel nee" style={{ opacity: nee }}>NEE</motion.span>
         <h2 className="kop-klein">{recept.titel}</h2>

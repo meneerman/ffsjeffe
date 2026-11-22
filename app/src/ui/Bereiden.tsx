@@ -1,6 +1,8 @@
+import { motion } from 'motion/react'
 import { aantalPorties } from '../core/schalen'
 import type { Menu, Recept } from '../core/types'
 import { dagenGeleden } from '../core/voorstel'
+import { lijstItem } from './beweging'
 
 export function geledenTekst(datum: string | undefined, nu: Date): string {
   if (!datum) return 'nog nooit'
@@ -33,7 +35,7 @@ export function Bereiden({ menu, perId, nu, bezig, wisselGegeten }: {
             r.tijdMinuten > 0 && `${r.tijdMinuten} min`,
           ].filter(Boolean).join(' · ')
           return (
-            <li key={g.receptId} data-testid="gerecht" className={`gerecht-rij${g.gegetenOp ? ' gegeten' : ''}`}>
+            <motion.li layout variants={lijstItem} initial={false} animate="zichtbaar" key={g.receptId} data-testid="gerecht" className={`gerecht-rij${g.gegetenOp ? ' gegeten' : ''}`}>
               <div className="kaart gerecht bereid">
                 <div className="gerecht-kop">
                   <div className="gerecht-tekst">
@@ -47,7 +49,7 @@ export function Bereiden({ menu, perId, nu, bezig, wisselGegeten }: {
                   </button>
                 </div>
               </div>
-            </li>
+            </motion.li>
           )
         })}
       </ul>

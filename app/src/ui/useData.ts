@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useState } from 'react'
 import type { Categorieen, Concept, Instellingen, Menu, Recept, ReceptFout, Verpakkingen } from '../core/types'
+import type { Winkels } from '../core/winkels'
 import type { DataRepo, KeepStatus } from '../data/github'
 
 export type Repo = Pick<DataRepo, 'recepten' | 'menu' | 'instellingen' | 'keepStatus' | 'zetMenu' | 'concept' | 'zetConcept'>
@@ -9,6 +10,7 @@ export type AppData = {
   fouten: ReceptFout[]
   verpakkingen: Verpakkingen
   categorieen: Categorieen
+  winkels: Winkels
   menu: { menu: Menu; sha: string } | null
   instellingen: Instellingen
   keepStatus: KeepStatus | null

@@ -1,4 +1,5 @@
 import { parseCategorieen, parseRecept, parseVerpakkingen } from '../core/recepten'
+import { GEEN_WINKELS, parseWinkels, type Winkels } from '../core/winkels'
 import type { Categorieen, Concept, Instellingen, Menu, Recept, ReceptFout, Verpakkingen } from '../core/types'
 
 export type Verbinding = { owner: string; repo: string; token: string }
@@ -65,12 +66,13 @@ export class DataRepo {
     return { inhoud: vanBase64(data.content), sha: data.sha }
   }
 
-  async recepten(): Promise<{ recepten: Recept[]; fouten: ReceptFout[]; verpakkingen: Verpakkingen; categorieen: Categorieen }> {
+  async recepten(): Promise<{ recepten: Recept[]; fouten: ReceptFout[]; verpakkingen: Verpakkingen; categorieen: Categorieen; winkels: Winkels }> {
     const md = (await this.paden()).filter((p) => p.startsWith('recepten/') && p.endsWith('.md'))
     const isExtra = (p: string) => p.split('/').pop()!.startsWith('_')
-    const [verpakkingsBestand, categorieenBestand, ...bestanden] = await Promise.all([
+    const [verpakkingsBestand, categorieenBestand, winkelsBestand, ...bestanden] = await Promise.all([
       md.includes('recepten/_verpakkingen.md') ? this.bestand('recepten/_verpakkingen.md') : Promise.resolve(null),
       md.includes('recepten/_categorieen.md') ? this.bestand('recepten/_categorieen.md') : Promise.resolve(null),
+      md.includes('recepten/_winkels.md') ? this.bestand('recepten/_winkels.md') : Promise.resolve(null),
       ...md.filter((p) => !isExtra(p)).map(async (p) => ({ pad: p, b: await this.bestand(p) })),
     ])
     const recepten: Recept[] = []
@@ -83,6 +85,7 @@ export class DataRepo {
     }
     return { recepten, fouten, verpakkingen: verpakkingsBestand ? parseVerpakkingen(verpakkingsBestand.inhoud) : {},
       categorieen: categorieenBestand ? parseCategorieen(categorieenBestand.inhoud) : {},
+      winkels: winkelsBestand ? parseWinkels(winkelsBestand.inhoud) : GEEN_WINKELS,
     }
   }
 

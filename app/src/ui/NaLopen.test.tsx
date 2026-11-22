@@ -71,3 +71,13 @@ test('slepen naar rijen die al uit staan zet ze juist aan; een gewone tik werkt 
   await userEvent.click(screen.getByRole('checkbox', { name: 'Ui 2' }))
   expect(onWissel).toHaveBeenCalledWith('Ui 2')
 })
+
+test('winkeliconen bij een boodschappenregel die niet bij Lidl of AH te koop is', () => {
+  const winkels = { nietLidl: new Set(['pasta', 'ui']), nietAh: new Set(['ui']) }
+  render(<NaLopen items={items} categorieen={categorieen} winkels={winkels} uit={new Set()} onWissel={() => {}} />)
+  const rij = (n: string) => screen.getByRole('checkbox', { name: new RegExp(`^${n}`) }).closest('li')!
+  expect(within(rij('Pasta 400 g')).getByLabelText('Niet bij Lidl')).toBeTruthy()
+  expect(within(rij('Pasta 400 g')).queryByLabelText('Niet bij Albert Heijn')).toBeNull()
+  expect(within(rij('Ui 2')).getByLabelText('Niet bij Albert Heijn')).toBeTruthy()
+  expect(within(rij('Olijfolie 30 ml')).queryByLabelText(/Niet bij/)).toBeNull()
+})

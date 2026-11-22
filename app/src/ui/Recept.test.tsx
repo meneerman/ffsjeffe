@@ -217,3 +217,22 @@ test('slepen over de ingrediëntvinkjes vinkt meerdere regels in één keer af',
   expect(vakken.slice(0, 3).every((v) => v.checked)).toBe(true)
   expect(vakken.slice(3).some((v) => v.checked)).toBe(false)
 })
+
+test('winkeliconen: wat niet bij Lidl of de Albert Heijn te koop is, met een streep', async () => {
+  const d = await data()
+  render(<ReceptPagina recept={recept2(d)} data={d} repo={new NepRepo()} naam="Menno" />)
+  expect(screen.getByLabelText('Niet bij Lidl: zalmfilet, spinazie')).toBeTruthy()
+  expect(screen.getByLabelText('Niet bij Albert Heijn: spinazie')).toBeTruthy()
+  const rij = (t: RegExp) => screen.getAllByRole('checkbox').find((c) => t.test(c.getAttribute('aria-label') ?? ''))!.closest('li')!
+  expect(within(rij(/zalmfilet/)).getByLabelText('Niet bij Lidl')).toBeTruthy()
+  expect(within(rij(/zalmfilet/)).queryByLabelText('Niet bij Albert Heijn')).toBeNull()
+  expect(within(rij(/spinazie/)).getByLabelText('Niet bij Lidl')).toBeTruthy()
+  expect(within(rij(/spinazie/)).getByLabelText('Niet bij Albert Heijn')).toBeTruthy()
+  expect(within(rij(/crème fraîche/)).queryByLabelText(/Niet bij/)).toBeNull()
+})
+
+test('een recept waarvan alles bij Lidl te koop is, heeft geen winkeliconen', async () => {
+  const d = await data()
+  render(<ReceptPagina recept={recept2(d, WRAPS)} data={d} repo={new NepRepo()} naam="Menno" />)
+  expect(screen.queryByLabelText(/Niet bij/)).toBeNull()
+})

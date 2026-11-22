@@ -270,3 +270,11 @@ footer { margin-top: 40px; text-align: center; }
 /* slepen over vinkjes: alleen het vinkje zelf vangt het slepen, de rest van de rij scrolt gewoon */
 .vinklijst input, .nalopen-groep input { touch-action: none; }
 .vinklijst label, .nalopen-groep label { -webkit-user-select: none; user-select: none; }
+
+/* winkeliconen: kleine badges met een streep erdoor als iets daar niet te koop is */
+.winkelbordjes { display: inline-flex; gap: 5px; margin-left: auto; padding-left: 10px; flex: none; }
+.winkel { position: relative; display: inline-grid; place-items: center; height: 20px; padding: 0 6px; border-radius: 5px; font-size: 10.5px; font-weight: 700; letter-spacing: 0.02em; line-height: 1; opacity: 0.85; }
+.winkel-lidl { background: #0a4ea3; color: #ffd400; }
+.winkel-ah { background: #00a0e2; color: #fff; }
+.winkel::after { content: ''; position: absolute; left: -2px; right: -2px; top: 50%; height: 2px; background: #ff5a4f; border-radius: 2px; transform: rotate(-22deg); box-shadow: 0 0 0 1px rgba(10, 10, 12, 0.7); }
+.chip.winkelchip { gap: 8px; }

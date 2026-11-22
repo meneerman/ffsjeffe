@@ -39,19 +39,22 @@ test('recepten: titels met spaties en accenten, _-bestanden apart, fouten met re
     'GET git/trees/main?recursive=1': { status: 200, body: { tree: [
       { path: `recepten/${PASTA}`, type: 'blob' }, { path: `recepten/${WRAPS}`, type: 'blob' },
       { path: 'recepten/Kapot.md', type: 'blob' }, { path: 'recepten/_verpakkingen.md', type: 'blob' },
-      { path: 'recepten/_sjabloon.md', type: 'blob' }, { path: 'recepten/_categorieen.md', type: 'blob' }, { path: 'weekmenu/menu.json', type: 'blob' },
+      { path: 'recepten/_sjabloon.md', type: 'blob' }, { path: 'recepten/_categorieen.md', type: 'blob' }, { path: 'recepten/_winkels.md', type: 'blob' }, { path: 'weekmenu/menu.json', type: 'blob' },
     ] } },
     [`GET ${pad(`recepten/${PASTA}`)}`]: bestand(leesVoorbeeld(PASTA)),
     [`GET ${pad(`recepten/${WRAPS}`)}`]: bestand(leesVoorbeeld(WRAPS)),
     [`GET ${pad('recepten/Kapot.md')}`]: bestand('geen frontmatter'),
     [`GET ${pad('recepten/_verpakkingen.md')}`]: bestand(leesVoorbeeld('_verpakkingen.md')),
     [`GET ${pad('recepten/_categorieen.md')}`]: bestand(leesVoorbeeld('_categorieen.md')),
+    [`GET ${pad('recepten/_winkels.md')}`]: bestand(leesVoorbeeld('_winkels.md')),
   })
   const uit = await r.recepten()
   expect(uit.recepten.map((x) => x.titel).sort()).toEqual(['Pasta met zalm en crème fraîche', 'Wraps met kip en crème fraîche'])
   expect(uit.fouten).toEqual([{ pad: 'recepten/Kapot.md', fout: 'geen frontmatter' }])
   expect(uit.verpakkingen['crème fraîche']).toEqual({ hoeveelheid: 200, eenheid: 'ml' })
   expect(uit.categorieen['olijfolie']).toBe('Olie, sauzen & azijn')
+  expect(uit.winkels.nietLidl.has('zalmfilet')).toBe(true)
+  expect(uit.winkels.nietAh.has('spinazie')).toBe(true)
   expect(verzoeken.some((v) => v.url.includes('_sjabloon'))).toBe(false)
   expect((verzoeken[0].init?.headers as Record<string, string>).Authorization).toBe('Bearer tok')
   expect(verzoeken.every((v) => v.init?.cache === 'no-store')).toBe(true)
@@ -59,7 +62,7 @@ test('recepten: titels met spaties en accenten, _-bestanden apart, fouten met re
 
 test('lege repo heeft geen recepten', async () => {
   const { repo: r } = repo({ 'GET git/trees/main?recursive=1': { status: 409 } })
-  expect(await r.recepten()).toEqual({ recepten: [], fouten: [], verpakkingen: {}, categorieen: {} })
+  expect(await r.recepten()).toEqual({ recepten: [], fouten: [], verpakkingen: {}, categorieen: {}, winkels: { nietLidl: new Set(), nietAh: new Set() } })
 })
 
 test('menu: null bij 404, v1 of kapotte JSON', async () => {

@@ -5,7 +5,9 @@ import type { Recept } from '../core/types'
 import { lees, schrijf } from './opslag'
 import { Stapper } from './Stapper'
 import { useConcept } from './useConcept'
+import { buitenAh, buitenLidl } from '../core/winkels'
 import { useSleepVinken } from './useSleepVinken'
+import { Winkelbord, Winkelbordjes } from './Winkel'
 import type { AppData, Repo } from './useData'
 
 type Lock = { release: () => Promise<void>; released?: boolean; addEventListener?: (t: 'release', f: () => void) => void }
@@ -82,6 +84,8 @@ export function ReceptPagina({ recept: r, data, repo, naam }: { recept: Recept; 
   const sleepI = useSleepVinken((id) => vg.i.includes(Number(id)), zetVink('i'))
   const sleepV = useSleepVinken((id) => vg.v.includes(Number(id)), zetVink('v'))
 
+  const zonderLidl = r.ingredienten.filter((i) => buitenLidl(i.naam, data.winkels)).map((i) => i.naam)
+  const zonderAh = r.ingredienten.filter((i) => buitenAh(i.naam, data.winkels)).map((i) => i.naam)
   const huidigeStap = r.stappen.findIndex((_, n) => !vg.s.includes(n))
 
   return (
@@ -91,6 +95,8 @@ export function ReceptPagina({ recept: r, data, repo, naam }: { recept: Recept; 
       <div className="chips">
         {r.tijdMinuten > 0 && <span className="chip">{r.tijdMinuten} min</span>}
         {r.vooraf && <span className="chip vooraf">⏳ Vooraf: {r.vooraf}</span>}
+        {zonderLidl.length > 0 && <span className="chip winkelchip"><Winkelbord winkel="lidl" wat={zonderLidl.join(', ')} /><span>{zonderLidl.join(', ')}</span></span>}
+        {zonderAh.length > 0 && <span className="chip winkelchip"><Winkelbord winkel="ah" wat={zonderAh.join(', ')} /><span>{zonderAh.join(', ')}</span></span>}
         <Stapper naam="eters" icoon="👤" waarde={eters} wijzig={(n) => zet('eters', n)} />
         <Stapper naam="avonden" icoon="☾" waarde={avonden} wijzig={(n) => zet('avonden', n)} />
         {avonden > 1 && <span className="chip accent">{aantalPorties(eters, avonden)} porties</span>}
@@ -117,6 +123,7 @@ export function ReceptPagina({ recept: r, data, repo, naam }: { recept: Recept; 
               <label>
                 <input type="checkbox" checked={vg.i.includes(n)} onChange={() => wissel('i', n)} aria-label={tekst} {...sleepI.vinkvak(String(n))} />
                 <span>{tekst}</span>
+                <Winkelbordjes naam={i.naam} winkels={data.winkels} />
               </label>
             </li>
           )

@@ -273,11 +273,7 @@ footer { margin-top: 40px; text-align: center; }
 
 /* winkeliconen: kleine badges met een streep erdoor als iets daar niet te koop is */
 .winkelbordjes { display: inline-flex; gap: 5px; margin-left: auto; padding-left: 10px; flex: none; }
-.winkel { position: relative; display: inline-grid; place-items: center; height: 24px; min-width: 38px; padding: 0 8px; border-radius: 6px; font-size: 12px; font-weight: 700; letter-spacing: 0.02em; line-height: 1; overflow: hidden; }
-.winkel-lidl { background: #0a4ea3; color: #ffd400; }
-.winkel-ah { background: #00a0e2; color: #fff; }
-/* streep van hoek naar hoek; de tekst blijft leesbaar eronder */
-.winkel::after { content: ''; position: absolute; inset: 0; background: linear-gradient(to top right, transparent calc(50% - 1.2px), #ff4d42 calc(50% - 1.2px), #ff4d42 calc(50% + 1.2px), transparent calc(50% + 1.2px)); }
+.winkel { display: inline-flex; align-items: center; height: 20px; padding: 0 8px; border-radius: 99px; border: 1px solid var(--rand); background: transparent; color: var(--zacht); font-size: 11px; font-weight: 500; letter-spacing: 0.02em; line-height: 1; text-decoration: line-through; text-decoration-thickness: 1px; }
 .chip.winkelchip { gap: 8px; }
 
 /* samenvatting onder een titel in lijsten en kaarten */

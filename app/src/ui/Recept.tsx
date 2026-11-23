@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 import { schaalfactor } from '../core/boodschappen'
+import { gerechtVoorRecept } from '../core/menu'
 import { aantalPorties, schaalStap, toonIngredient } from '../core/schalen'
 import type { Recept } from '../core/types'
 import { lees, schrijf } from './opslag'
@@ -53,7 +54,9 @@ export function ReceptPagina({ recept: r, data, repo, naam }: { recept: Recept; 
   const concept = useConcept(data, menu, repo, naam)
   const opMenu = concept.gerechten.find((g) => g.receptId === r.id)
   // een al vastgezet gerecht kook je met de eters en avonden waarmee het gekocht is; die aanpassen kan hier alleen voor dit scherm
-  const vastgezet = menu?.gerechten.find((g) => g.receptId === r.id)
+  const beoordeling = menu?.beoordelingen[r.id]
+  const besteld = gerechtVoorRecept(menu, r.id)
+  const vastgezet = besteld?.gerecht
   const [los, setLos] = useState({ eters: vastgezet?.eters ?? data.instellingen.huishouden, avonden: vastgezet?.avonden ?? r.avonden })
   const eters = opMenu?.eters ?? los.eters
   const avonden = opMenu?.avonden ?? los.avonden
@@ -71,7 +74,7 @@ export function ReceptPagina({ recept: r, data, repo, naam }: { recept: Recept; 
     else setLos(orig)
   }
 
-  const sleutel = `ffsjeffe.koken.${menu?.ronde ?? 'los'}.${r.id}`
+  const sleutel = `ffsjeffe.koken.${besteld?.batch.id ?? 'los'}.${r.id}`
   const [vg, setVg] = useState<Voortgang>(() => ({ i: [], v: [], s: [], ...(lees<Partial<Voortgang>>(sleutel) ?? {}) }))
   const wissel = (soort: keyof Voortgang, n: number) => {
     setVg((oud) => {
@@ -92,6 +95,9 @@ export function ReceptPagina({ recept: r, data, repo, naam }: { recept: Recept; 
     <article className="kook">
       <a className="terug" href="#/">‹ Menu</a>
       <h1 className="kop kook-kop">{r.titel}</h1>
+      {beoordeling !== undefined && (
+        <p className="beoordeling zacht" aria-label={`Beoordeling ${beoordeling} van 5`}>{'★'.repeat(beoordeling)}{'☆'.repeat(5 - beoordeling)} <span className="klein">{beoordeling} van 5</span></p>
+      )}
       <div className="chips">
         {r.tijdMinuten > 0 && <span className="chip">{r.tijdMinuten} min</span>}
         {r.vooraf && <span className="chip vooraf">⏳ Vooraf: {r.vooraf}</span>}

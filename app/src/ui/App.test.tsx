@@ -1,3 +1,4 @@
+import { gerecht, menuMet } from '../core/testdata'
 import { cleanup, render, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { afterEach, beforeEach, expect, test } from 'vitest'
@@ -80,9 +81,10 @@ test('gegeten blijft staan na recept openen en terug, en vastzetten daarna geeft
   verbind()
   const repo = new NepRepo()
   const recept = repo.recepten_[0].id
-  repo.menu_ = { menu: { versie: 2, ronde: 'R', gerechten: [{ receptId: recept, eters: 2, gegetenOp: null, vorigeKeer: null }], boodschappen: [], vastgezetOp: '2026-11-20T10:00:00.000Z', door: 'P', leegmakenOp: null, laatstGegeten: {} }, sha: 's0' }
+  repo.menu_ = { menu: menuMet([gerecht(recept, 2)], {}, { id: 'R', door: 'P' }), sha: 's0' }
   render(<App maakRepo={() => repo} />)
   await userEvent.click(await screen.findByRole('button', { name: `${recept} gegeten` }))
+  await userEvent.click(within(screen.getByRole('dialog')).getByRole('button', { name: 'Bevestigen' }))
   await screen.findByText(/✓ gegeten/)
   location.hash = `#/recept/${encodeURIComponent(recept)}`
   window.dispatchEvent(new HashChangeEvent('hashchange'))

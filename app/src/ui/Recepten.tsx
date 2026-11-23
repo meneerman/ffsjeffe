@@ -32,7 +32,7 @@ function indelen(recepten: Recept[]) {
 export function Recepten({ data, repo, naam }: SchermProps) {
   const menu = data.menu?.menu ?? null
   const concept = useConcept(data, menu, repo, naam)
-  const opMenu = new Set([...(menu?.gerechten ?? []), ...concept.gerechten].map((g) => g.receptId))
+  const opMenu = new Set(concept.gerechten.map((g) => g.receptId))
   const [filter, setFilter] = useState<Soort | 'alles'>('alles')
   const [alleenVriezer, setAlleenVriezer] = useState(false)
   const [gekozen, setGekozen] = useState<Set<string>>(new Set())

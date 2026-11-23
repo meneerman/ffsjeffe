@@ -1,7 +1,7 @@
 import { cleanup, fireEvent, render, screen, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { afterEach, beforeEach, expect, test, vi } from 'vitest'
-import { gerecht, ing, recept } from '../core/testdata'
+import { gerecht, ing, recept, menuMet } from '../core/testdata'
 import type { Menu } from '../core/types'
 import App from './App'
 import { NepRepo, PASTA, WRAPS } from './nepRepo'
@@ -11,12 +11,12 @@ import type { AppData } from './useData'
 beforeEach(() => localStorage.clear())
 afterEach(() => { cleanup(); vi.unstubAllGlobals() })
 
-const MENU: Menu = { versie: 2, ronde: 'R1', gerechten: [gerecht(PASTA, 3)], boodschappen: [], vastgezetOp: '2026-11-20T10:00:00.000Z', door: 'P', leegmakenOp: null, laatstGegeten: {} }
+const MENU: Menu = menuMet([gerecht(PASTA, 3)], {}, { id: 'R1', door: 'P' })
 
 /** Standaard staat PASTA in het concept (Plannen); met `menu` is het juist al vastgezet. */
 async function data(menu: Menu | null = null): Promise<AppData> {
   const repo = new NepRepo()
-  const concept = menu ? null : { concept: { gerechten: MENU.gerechten, sinds: '2026-11-21T09:00:00.000Z', door: 'P' }, sha: 'c' }
+  const concept = menu ? null : { concept: { gerechten: MENU.batches[0].gerechten, sinds: '2026-11-21T09:00:00.000Z', door: 'P' }, sha: 'c' }
   return { ...(await repo.recepten()), menu: menu ? { menu, sha: 's' } : null, instellingen: { huishouden: 2 }, keepStatus: null, concept }
 }
 const recept2 = (d: AppData, id = PASTA) => d.recepten.find((r) => r.id === id)!
@@ -78,7 +78,7 @@ test('afvinken wordt doorgestreept en onthouden per ronde', async () => {
   render(<ReceptPagina recept={recept2(d)} data={d} repo={new NepRepo()} naam="Menno" />)
   expect((screen.getByRole('checkbox', { name: '300 g pasta' }) as HTMLInputElement).checked).toBe(true)
   cleanup()
-  const nieuweRonde = await data({ ...MENU, ronde: 'R2' })
+  const nieuweRonde = await data(menuMet([gerecht(PASTA, 3)], {}, { id: 'R2', door: 'P' }))
   render(<ReceptPagina recept={recept2(nieuweRonde)} data={nieuweRonde} repo={new NepRepo()} naam="Menno" />)
   expect((screen.getByRole('checkbox', { name: '300 g pasta' }) as HTMLInputElement).checked).toBe(false)
 })
@@ -235,4 +235,18 @@ test('een recept waarvan alles bij Lidl te koop is, heeft geen winkeliconen', as
   const d = await data()
   render(<ReceptPagina recept={recept2(d, WRAPS)} data={d} repo={new NepRepo()} naam="Menno" />)
   expect(screen.queryByLabelText(/Niet bij/)).toBeNull()
+})
+
+test('beoordeling staat bij het recept, alleen als die er is', async () => {
+  const zonder = await data(MENU)
+  render(<ReceptPagina recept={recept2(zonder)} data={zonder} repo={new NepRepo()} naam="Menno" />)
+  expect(screen.queryByLabelText(/^Beoordeling/)).toBeNull()
+  cleanup()
+  const met = await data({ ...MENU, beoordelingen: { [PASTA]: 4 } })
+  render(<ReceptPagina recept={recept2(met)} data={met} repo={new NepRepo()} naam="Menno" />)
+  expect(screen.getByLabelText('Beoordeling 4 van 5').textContent).toMatch(/★★★★☆/)
+  cleanup()
+  const nul = await data({ ...MENU, beoordelingen: { [PASTA]: 0 } })
+  render(<ReceptPagina recept={recept2(nul)} data={nul} repo={new NepRepo()} naam="Menno" />)
+  expect(screen.getByLabelText('Beoordeling 0 van 5')).toBeTruthy()
 })

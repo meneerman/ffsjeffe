@@ -51,7 +51,21 @@ export type Verpakkingen = Record<string, Verpakking>
 /** eters en avonden zijn per gerecht instelbaar; avonden begint op de standaard van het recept. */
 export type Gerecht = { receptId: string; eters: number; avonden: number; gegetenOp: string | null; vorigeKeer: string | null }
 
+/** Een kookbatch: wat in één keer naar Keep is gestuurd (en dus besteld). `id` = tijdstip van naar Keep sturen. */
+export type Batch = { id: string; vastgezetOp: string; door: string; gerechten: Gerecht[]; boodschappen: string[] }
+
 export type Menu = {
+  versie: 3
+  /** oudste eerst */
+  batches: Batch[]
+  leegmakenOp: string | null
+  laatstGegeten: Record<string, string>
+  /** receptId → 0..5 */
+  beoordelingen: Record<string, number>
+}
+
+/** Oud formaat (één ronde); wordt bij het lezen omgezet naar één batch. */
+export type MenuV2 = {
   versie: 2
   ronde: string
   gerechten: Gerecht[]

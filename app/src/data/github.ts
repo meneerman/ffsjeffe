@@ -1,6 +1,7 @@
 import { parseCategorieen, parseRecept, parseVerpakkingen } from '../core/recepten'
 import { GEEN_WINKELS, parseWinkels, type Winkels } from '../core/winkels'
-import type { Categorieen, Concept, Instellingen, Menu, Recept, ReceptFout, Verpakkingen } from '../core/types'
+import { migreer } from '../core/menu'
+import type { Categorieen, Concept, Instellingen, Menu, MenuV2, Recept, ReceptFout, Verpakkingen } from '../core/types'
 
 export type Verbinding = { owner: string; repo: string; token: string }
 export type KeepStatus = { tijd: string; ok: boolean; melding: string; weken: string[] }
@@ -97,8 +98,9 @@ export class DataRepo {
     this.onbruikbaarSha = null
     if (!b) return null
     try {
-      const menu = JSON.parse(b.inhoud) as Menu
-      if (menu && menu.versie === 2 && Array.isArray(menu.gerechten)) return { menu, sha: b.sha }
+      const menu = JSON.parse(b.inhoud) as Menu | MenuV2
+      if (menu && menu.versie === 2 && Array.isArray(menu.gerechten)) return { menu: migreer(menu), sha: b.sha }
+      if (menu && menu.versie === 3 && Array.isArray(menu.batches)) return { menu: { ...menu, beoordelingen: menu.beoordelingen ?? {} }, sha: b.sha }
     } catch {
       /* onbruikbaar */
     }

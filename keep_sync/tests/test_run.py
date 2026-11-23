@@ -182,3 +182,40 @@ def test_v1_menu_touches_nothing(tmp_path):
     (tmp_path / "weekmenu" / "menu.json").write_text(json.dumps({"week": "2026-W48"}))
     run.sync(tmp_path, keep, NOW)
     assert keep.texts() == ["Melk", "Brood"]
+
+
+def write_batches(data: Path, batches: dict, leegmaken_op=None):
+    d = data / "weekmenu"
+    d.mkdir(parents=True, exist_ok=True)
+    menu = {"versie": 3, "batches": [{"id": i, "vastgezetOp": i, "door": "t", "gerechten": [], "boodschappen": lines} for i, lines in batches.items()],
+            "leegmakenOp": leegmaken_op, "laatstGegeten": {}, "beoordelingen": {}}
+    (d / "menu.json").write_text(json.dumps(menu))
+
+
+def test_versie_3_een_nieuwe_batch_voegt_alleen_zijn_eigen_regels_toe(tmp_path):
+    keep = FakeKeepList()
+    write_batches(tmp_path, {R: ["Melk 1 l", "Citroen 2"]})
+    run.sync(tmp_path, keep, NOW)
+    keep.check_all()  # de eerste batch is besteld en gekocht
+    write_batches(tmp_path, {R: ["Melk 1 l", "Citroen 2"], R2: ["Citroen 1", "Melk 1 l"]})
+    run.sync(tmp_path, keep, NOW)
+    assert sorted(keep.texts()) == ["Citroen 1", "Citroen 2", "Melk 1 l", "Melk 1 l"]
+    assert [i.checked for i in keep.items()].count(False) == 2
+
+
+def test_versie_3_leegmaken_ruimt_alle_batches_op(tmp_path):
+    keep = FakeKeepList()
+    write_batches(tmp_path, {R: ["Melk 1 l"], R2: ["Brood 1"]})
+    run.sync(tmp_path, keep, NOW)
+    write_batches(tmp_path, {}, leegmaken_op="2026-11-29T10:00:00.000Z")
+    run.sync(tmp_path, keep, NOW)
+    assert keep.texts() == []
+
+
+def test_versie_2_blijft_werken_en_is_compatibel_met_de_omzetting(tmp_path):
+    keep = FakeKeepList()
+    write_menu(tmp_path, ["Melk 1 l"])
+    run.sync(tmp_path, keep, NOW)
+    write_batches(tmp_path, {R: ["Melk 1 l"]})  # dezelfde ronde, nu als batch-id
+    run.sync(tmp_path, keep, NOW)
+    assert keep.texts() == ["Melk 1 l"]

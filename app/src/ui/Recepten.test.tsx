@@ -1,8 +1,8 @@
 import { cleanup, fireEvent, render, screen, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { afterEach, beforeEach, expect, test } from 'vitest'
-import { gerecht, ing, recept } from '../core/testdata'
-import type { Menu, Recept } from '../core/types'
+import { gerecht, ing, recept, menuMet } from '../core/testdata'
+import type { Gerecht, Menu, Recept } from '../core/types'
 import App from './App'
 import { NepRepo, PASTA, WRAPS } from './nepRepo'
 import { Recepten } from './Recepten'
@@ -18,12 +18,13 @@ const EXTRA: Recept[] = [
   recept('Broccolisoep', [ing('broccoli', 400, 'g'), ing('crème fraîche', 100, 'ml')], { soort: 'voorgerecht' }),
   recept('Kip uit de oven', [ing('kipfilet', 400, 'g'), ing('Broccoliroosjes', 300, 'g')]),
 ]
-const MENU: Menu = { versie: 2, ronde: 'R', gerechten: [gerecht(PASTA, 4)], boodschappen: [], vastgezetOp: '2026-11-20T10:00:00.000Z', door: 'P', leegmakenOp: null, laatstGegeten: {} }
+const MENU: Menu = menuMet([gerecht(PASTA, 4)], {}, { id: 'R', door: 'P' })
 
-async function toon(menu: Menu | null = MENU) {
+async function toon(menu: Menu | null = MENU, inConcept: Gerecht[] = []) {
   const repo = new NepRepo()
   repo.recepten_.push(...EXTRA)
-  const data: AppData = { ...(await repo.recepten()), menu: menu ? { menu, sha: 's' } : null, instellingen: { huishouden: 4 }, keepStatus: null, concept: null }
+  const concept = inConcept.length > 0 ? { concept: { gerechten: inConcept, sinds: '2026-11-21T09:00:00.000Z', door: 'P' }, sha: 'c' } : null
+  const data: AppData = { ...(await repo.recepten()), menu: menu ? { menu, sha: 's' } : null, instellingen: { huishouden: 4 }, keepStatus: null, concept }
   render(<Recepten data={data} repo={repo} naam="Menno" herlaad={() => {}} bijgewerkt={() => {}} hash="#/recepten" />)
 }
 const vinkje = (titel: string) => screen.getByRole('checkbox', { name: titel }) as HTMLInputElement
@@ -42,8 +43,14 @@ test('alle recepten gegroepeerd per soort, met filters en aantallen', async () =
   expect(screen.getAllByRole('checkbox')).toHaveLength(7)
 })
 
-test('recept dat al op het menu staat is aangevinkt en vast', async () => {
+test('een recept in een eerdere batch kan gewoon opnieuw gekozen worden', async () => {
   await toon()
+  expect(vinkje(PASTA).checked).toBe(false)
+  expect(vinkje(PASTA).disabled).toBe(false)
+})
+
+test('recept dat al in het concept staat is aangevinkt en vast', async () => {
+  await toon(null, [gerecht(PASTA, 4)])
   expect(vinkje(PASTA).checked).toBe(true)
   expect(vinkje(PASTA).disabled).toBe(true)
   expect(within(vinkje(PASTA).closest('li')!).getByText('op het menu')).toBeTruthy()

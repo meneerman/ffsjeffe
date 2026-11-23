@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { verlooptNa } from '../core/menu'
 import type { Concept, Gerecht, Menu } from '../core/types'
 import { VerouderdFout } from '../data/github'
 import { lees, schrijf } from './opslag'
@@ -24,8 +25,9 @@ export function useConcept(data: AppData, menu: Menu | null, repo: Repo, naam: s
   const [lokaal, setLokaal] = useState<Lokaal | null>(() => lees<Lokaal>(SLEUTEL))
   const [opslag, setOpslag] = useState<ConceptOpslag>({ status: 'stil', fout: null })
 
+  const verloop = verlooptNa(menu)
   const geldig = <T extends { gerechten: Gerecht[]; sinds: string }>(c: T | null | undefined): T | null =>
-    c && Array.isArray(c.gerechten) && !Number.isNaN(tijd(c)) && !(menu && Date.parse(menu.vastgezetOp) >= tijd(c)) ? c : null
+    c && Array.isArray(c.gerechten) && !Number.isNaN(tijd(c)) && !(verloop && Date.parse(verloop) >= tijd(c)) ? c : null
   const geldigLokaal = geldig(lokaal)
   const geldigGedeeld = geldig(data.concept?.concept)
   const actief: (Lokaal & { bron: 'lokaal' | 'gedeeld' }) | null =

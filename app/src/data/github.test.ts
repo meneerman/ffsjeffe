@@ -27,6 +27,11 @@ const repo = (routes: Record<string, Antwoord>) => {
 const bestand = (inhoud: string, sha = 'sha1') => ({ status: 200, body: { content: naarBase64(inhoud), sha } })
 
 const MENU: Menu = {
+  versie: 3, batches: [{ id: '2026-11-21T10:00:00.000Z', vastgezetOp: '2026-11-21T10:00:00.000Z', door: 'Menno',
+    gerechten: [{ receptId: 'Pasta met zalm en crème fraîche', eters: 3, avonden: 1, gegetenOp: null, vorigeKeer: null }], boodschappen: ['Crème fraîche 1× 200 ml'] }],
+  leegmakenOp: null, laatstGegeten: {}, beoordelingen: {},
+}
+const MENU_V2 = {
   versie: 2, ronde: '2026-11-21T10:00:00.000Z', gerechten: [{ receptId: 'Pasta met zalm en crème fraîche', eters: 3, gegetenOp: null, vorigeKeer: null }],
   boodschappen: ['Crème fraîche 1× 200 ml'], vastgezetOp: '2026-11-21T10:00:00.000Z', door: 'Menno', leegmakenOp: null, laatstGegeten: {},
 }
@@ -73,6 +78,12 @@ test('menu: null bij 404, v1 of kapotte JSON', async () => {
 
 test('menu met sha', async () =>
   expect(await repo({ [`GET ${MENUPAD}?ref=main`]: bestand(JSON.stringify(MENU), 'abc') }).repo.menu()).toEqual({ menu: MENU, sha: 'abc' }))
+
+test('menu versie 2 wordt één batch met id = ronde', async () => {
+  const m = (await repo({ [`GET ${MENUPAD}?ref=main`]: bestand(JSON.stringify(MENU_V2), 'abc') }).repo.menu())!
+  expect(m.sha).toBe('abc')
+  expect(m.menu).toMatchObject({ versie: 3, beoordelingen: {}, batches: [{ id: '2026-11-21T10:00:00.000Z', door: 'Menno', boodschappen: ['Crème fraîche 1× 200 ml'] }] })
+})
 
 test('zetMenu met sha en bericht', async () => {
   const { repo: r, verzoeken } = repo({ [`PUT ${MENUPAD}`]: { status: 200, body: { content: { sha: 'nieuw' } } } })

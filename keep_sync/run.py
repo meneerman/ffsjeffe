@@ -28,6 +28,9 @@ class KeepList(Protocol):
 def desired_lines(menu: dict | None) -> list[Wens]:
     if not menu:
         return []
+    if menu.get("versie") == 3:
+        # elke batch heeft eigen wensen; dezelfde tekst in twee batches blijven twee regels
+        return list(dict.fromkeys((b.get("id", ""), tekst) for b in menu.get("batches", []) for tekst in b.get("boodschappen", [])))
     ronde = menu.get("ronde", "")
     return list(dict.fromkeys((ronde, tekst) for tekst in menu.get("boodschappen", [])))
 
@@ -49,7 +52,7 @@ def sync(data_dir: Path, keep: KeepList, now: datetime) -> dict:
     state = _read(data_dir / "weekmenu" / "keep-state.json") or {}
     menu_pad = data_dir / "weekmenu" / "menu.json"
     menu = _read(menu_pad)
-    if menu_pad.exists() and (menu is None or menu.get("versie") != 2):
+    if menu_pad.exists() and (menu is None or menu.get("versie") not in (2, 3)):
         # Nooit op een onleesbaar menu handelen: dat zou alle open app-regels weghalen.
         status = {"tijd": now.isoformat(), "ok": False, "melding": "menu.json is onleesbaar of heeft een oud formaat; Keep is niet aangepast.", "weken": []}
         _write(data_dir, "keep-status.json", status)

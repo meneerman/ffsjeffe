@@ -1,7 +1,7 @@
 import { AnimatePresence, motion } from 'motion/react'
 import { useMemo, useRef, useState } from 'react'
 import { behoeften, boodschappenItems } from '../core/boodschappen'
-import { leegmaken, markeerGegeten, vastzetten, zaadVoor } from '../core/menu'
+import { laatsteVastgezetOp, leegmaken, markeerGegeten, vastzetten, zaadVoor } from '../core/menu'
 import type { Menu as MenuT, Recept } from '../core/types'
 import { pakOp, type PakOp } from '../core/pakop'
 import { aantalPorties } from '../core/schalen'
@@ -9,7 +9,6 @@ import { kandidaten } from '../core/voorstel'
 import { VerouderdFout } from '../data/github'
 import type { SchermProps } from './App'
 import { Bereiden, geledenTekst } from './Bereiden'
-import { Boodschappen } from './Boodschappen'
 import { NaLopen } from './NaLopen'
 import { Venster } from './Venster'
 import { leesModus, schrijfModus, type Modus } from './modus'
@@ -44,22 +43,9 @@ export function Menu({ data, repo, naam, herlaad, bijgewerkt, nu = () => new Dat
   laatsteLijst.current = gerechten
   const perId = useMemo(() => Object.fromEntries(data.recepten.map((r) => [r.id, r])), [data.recepten])
   const laatstGegeten = menu?.laatstGegeten ?? {}
-  const vastgezet = useMemo(() => new Map((menu?.gerechten ?? []).map((g) => [g.receptId, g])), [menu])
-  // wat in Plannen staat komt bij het vastgezette menu (hetzelfde gerecht vervangt het oude); de boodschappen gaan over alles
-  const samen = useMemo(() => {
-    const nieuw = new Set(gerechten.map((g) => g.receptId))
-    return [...(menu?.gerechten ?? []).filter((g) => !nieuw.has(g.receptId)), ...gerechten]
-  }, [menu, gerechten])
-  const items = boodschappenItems(behoeften(samen, perId), data.verpakkingen)
-  // in het nalopen alleen wat nog niet op Keep staat
-  const opKeep = new Set(menu?.boodschappen ?? [])
-  // alleen als je nu iets plant; zonder gepland gerecht is er niets om na te lopen
-  // wat je bij het vorige vastzetten uitvinkte (in huis) staat niet op Keep maar komt ook niet terug
-  const vastRegels = useMemo(
-    () => new Set(boodschappenItems(behoeften(menu?.gerechten ?? [], perId), data.verpakkingen).map((i) => i.regel)),
-    [menu, perId, data.verpakkingen],
-  )
-  const nieuweItems = gerechten.length === 0 ? [] : items.filter((i) => !opKeep.has(i.regel) && !vastRegels.has(i.regel))
+  // Plannen staat los van wat al besteld is: de boodschappen komen alleen uit de gerechten van het concept
+  const items = boodschappenItems(behoeften(gerechten, perId), data.verpakkingen)
+  const nieuweItems = gerechten.length === 0 ? [] : items
   // wat je uitvinkt gaat deze ronde niet naar Keep; alleen op dit toestel, tot het vastzetten
   const [uit, setUit] = useState<Set<string>>(new Set())
   const wisselRegel = (regel: string) => setUit((u) => {
@@ -67,7 +53,7 @@ export function Menu({ data, repo, naam, herlaad, bijgewerkt, nu = () => new Dat
     if (!n.delete(regel)) n.add(regel)
     return n
   })
-  const regels = items.filter((i) => opKeep.has(i.regel) || (!vastRegels.has(i.regel) && !uit.has(i.regel))).map((i) => i.regel)
+  const regels = nieuweItems.filter((i) => !uit.has(i.regel)).map((i) => i.regel)
   const standaard = data.instellingen.huishouden
 
   const [toevoegen, setToevoegen] = useState(false)
@@ -92,7 +78,7 @@ export function Menu({ data, repo, naam, herlaad, bijgewerkt, nu = () => new Dat
   }
 
   const zetVast = async () => {
-    const m = vastzetten(menu, samen, regels, naam, nu())
+    const m = vastzetten(menu, gerechten, regels, naam, nu())
     if (await schrijf(m, `Menu vastgezet door ${naam}`)) {
       kiesModus('bereiden')
       setUit(new Set())
@@ -103,21 +89,20 @@ export function Menu({ data, repo, naam, herlaad, bijgewerkt, nu = () => new Dat
 
   const maakLeeg = async () => {
     setLeegVragen(false)
-    if (await schrijf(leegmaken(menu, naam, nu()), `Keep leeggemaakt door ${naam}`)) {
+    if (await schrijf(leegmaken(menu, nu()), `Keep leeggemaakt door ${naam}`)) {
       concept.wis()
       herlaad()
     }
   }
 
-  const wisselGegeten = async (r: Recept) => {
+  const zetGegeten = async (batchId: string, r: Recept, gegeten: boolean, beoordeling: number | null) => {
     setBezig(true)
     setFout(null)
     try {
       const nieuwst = (await repo.menu()) ?? menuNu
       if (!nieuwst) return
-      const huidig = nieuwst.menu.gerechten.find((g) => g.receptId === r.id)
-      const m = markeerGegeten(nieuwst.menu, r.id, !huidig?.gegetenOp, nu())
-      const sha = await repo.zetMenu(m, nieuwst.sha, `${r.titel} gegeten — ${naam}`)
+      const m = markeerGegeten(nieuwst.menu, batchId, r.id, gegeten, beoordeling, nu())
+      const sha = await repo.zetMenu(m, nieuwst.sha, `${r.titel} ${gegeten ? 'gegeten' : 'niet gegeten'} — ${naam}`)
       bijgewerkt({ menu: m, sha })
     } catch (e) {
       setFout(e as Error)
@@ -148,11 +133,11 @@ export function Menu({ data, repo, naam, herlaad, bijgewerkt, nu = () => new Dat
   }
 
   // gegeten gerechten onderaan
-  const getoond = [...gerechten].sort((a, b) => Number(!!vastgezet.get(a.receptId)?.gegetenOp) - Number(!!vastgezet.get(b.receptId)?.gegetenOp))
+  const getoond = gerechten
   // Bereiden: het vastgezette menu, de boodschappen zijn gedaan. Plannen: het concept voor de volgende keer.
   const [modus, setModus] = useState<Modus | null>(leesModus)
   const kiesModus = (m: Modus) => { setModus(m); schrijfModus(m) }
-  const kanBereiden = !!menu && menu.gerechten.length > 0
+  const kanBereiden = !!menu && menu.batches.some((b) => b.gerechten.length > 0)
   const bereiden = kanBereiden && (modus ?? (concept.heeftConcept ? 'plannen' : 'bereiden')) === 'bereiden'
   const [teVerwijderen, setTeVerwijderen] = useState<string | null>(null)
   // tijdens het wegglijden van het venster blijft de laatst gevraagde titel staan
@@ -189,7 +174,7 @@ export function Menu({ data, repo, naam, herlaad, bijgewerkt, nu = () => new Dat
       )}
 
       <div className="status zacht klein">
-        {menu ? `Vastgezet door ${menu.door}` : 'Nog niet vastgezet'}
+        {menu && menu.batches.length > 0 ? `Vastgezet door ${menu.batches[menu.batches.length - 1].door}` : 'Nog niet vastgezet'}
       </div>
       {!bereiden && concept.heeftConcept && (
         <div className="status concept-status zacht klein" role="status">
@@ -205,15 +190,15 @@ export function Menu({ data, repo, naam, herlaad, bijgewerkt, nu = () => new Dat
         </div>
       )}
       {/* alleen in Bereiden, en alleen als er echt iets van ffsjeffe in Keep hoort te staan */}
-      {bereiden && menu && menu.gerechten.length > 0 && menu.boodschappen.length > 0 && (
-        <KeepStatusMelding key={menu.vastgezetOp} repo={repo} vastgezetOp={menu.vastgezetOp} begin={data.keepStatus} />
+      {bereiden && menu && menu.batches.some((b) => b.gerechten.length > 0 && b.boodschappen.length > 0) && (
+        <KeepStatusMelding key={laatsteVastgezetOp(menu)} repo={repo} vastgezetOp={laatsteVastgezetOp(menu)} begin={data.keepStatus} />
       )}
       {bereiden && concept.heeftConcept && (
         <div className="status concept-status zacht klein">Concept van {concept.door ?? 'iemand'} ligt klaar voor de volgende boodschappen (tab Plannen).</div>
       )}
 
       {bereiden && menu ? (
-        <Bereiden menu={menu} perId={perId} nu={nu()} bezig={bezig} wisselGegeten={wisselGegeten} winkels={data.winkels} />
+        <Bereiden menu={menu} perId={perId} nu={nu()} bezig={bezig} zetGegeten={zetGegeten} winkels={data.winkels} />
       ) : data.recepten.length === 0 ? (
         <p className="kaart">Nog geen recepten. Voeg ze toe in Obsidian in de map <code>recepten</code>.</p>
       ) : (
@@ -227,16 +212,13 @@ export function Menu({ data, repo, naam, herlaad, bijgewerkt, nu = () => new Dat
               eters={g.eters}
               avonden={g.avonden}
               meta={receptMeta(perId[g.receptId], laatstGegeten, nu(), g.eters, g.avonden)}
-              gegetenOp={vastgezet.get(g.receptId)?.gegetenOp ?? null}
-              kanGegeten={vastgezet.has(g.receptId)}
               nu={nu()}
               bezig={bezig}
               vraagVerwijder={() => setTeVerwijderen(g.receptId)}
-              tip={vastgezet.get(g.receptId)?.gegetenOp ? null : pakOp(perId[g.receptId], g, data.verpakkingen)}
+              tip={pakOp(perId[g.receptId], g, data.verpakkingen)}
               pasTipToe={(t: PakOp) => concept.wijzig((huidig) => huidig.map((x) => (x.receptId === g.receptId ? { ...x, eters: t.eters, avonden: t.avonden } : x)))}
               zetEters={(n: number) => zet(g.receptId, 'eters', n)}
               zetAvonden={(n: number) => zet(g.receptId, 'avonden', n)}
-              wisselGegeten={() => wisselGegeten(perId[g.receptId])}
             />
           ))}
           </AnimatePresence>
@@ -256,7 +238,7 @@ export function Menu({ data, repo, naam, herlaad, bijgewerkt, nu = () => new Dat
         </div>
       )}
 
-      {bereiden && menu ? <Boodschappen titel="In huis (uit Keep)" regels={menu.boodschappen} /> : <NaLopen items={nieuweItems} categorieen={data.categorieen} winkels={data.winkels} uit={uit} onWissel={wisselRegel} />}
+      {!bereiden && <NaLopen items={nieuweItems} categorieen={data.categorieen} winkels={data.winkels} uit={uit} onWissel={wisselRegel} />}
 
       {fout && (
         <div className="kaart foutblok">
@@ -298,9 +280,6 @@ export function Menu({ data, repo, naam, herlaad, bijgewerkt, nu = () => new Dat
       <Venster open={!!teVerwijderen && !!perId[teVerwijderen]} sluit={() => setTeVerwijderen(null)} label="Weet je het zeker?">
             <h2 className="kop-klein">Weet je het zeker?</h2>
             <p className="zacht">{vraagId && perId[vraagId]?.titel} gaat van het menu af.</p>
-            {vraagId && vastgezet.has(vraagId) && (
-              <p className="zacht">De ingrediënten staan al in Keep. Ze gaan pas van de lijst als je opnieuw op de boodschappenlijst drukt.</p>
-            )}
             <div className="knoppenrij">
               <button className="knop" onClick={() => setTeVerwijderen(null)}>Annuleren</button>
               <button className="knop gevaar" onClick={() => { const id = teVerwijderen; setTeVerwijderen(null); if (id) verwijder(id) }}>Verwijderen</button>
@@ -331,19 +310,19 @@ export function Menu({ data, repo, naam, herlaad, bijgewerkt, nu = () => new Dat
 
 function GerechtKaart(p: {
   winkels: Winkels
-  recept: Recept; eters: number; avonden: number; meta: string; gegetenOp: string | null; kanGegeten: boolean; nu: Date
+  recept: Recept; eters: number; avonden: number; meta: string; nu: Date
   tip: PakOp | null; pasTipToe: (t: PakOp) => void
-  bezig: boolean; vraagVerwijder: () => void; zetEters: (n: number) => void; zetAvonden: (n: number) => void; wisselGegeten: () => void
+  bezig: boolean; vraagVerwijder: () => void; zetEters: (n: number) => void; zetAvonden: (n: number) => void
 }) {
   const { recept: r } = p
   return (
-    <motion.li layout variants={lijstItem} initial="verborgen" animate="zichtbaar" exit="weg" data-testid="gerecht" className={`gerecht-rij${p.gegetenOp ? ' gegeten' : ''}`}>
+    <motion.li layout variants={lijstItem} initial="verborgen" animate="zichtbaar" exit="weg" data-testid="gerecht" className="gerecht-rij">
       <div className="kaart gerecht">
         <div className="gerecht-kop">
           <div className="gerecht-tekst">
             <a className="titel" href={`#/recept/${encodeURIComponent(r.id)}`}>{r.titel}</a>
             <ReceptWinkelbordjes recept={r} winkels={p.winkels} />
-            <div className="meta zacht">{p.gegetenOp ? `✓ gegeten ${geledenTekst(p.gegetenOp, p.nu)}` : p.meta}</div>
+            <div className="meta zacht">{p.meta}</div>
           </div>
           <button className="verwijder-knop" aria-label={`Verwijder ${r.titel}`} onClick={p.vraagVerwijder}>×</button>
         </div>
@@ -355,11 +334,6 @@ function GerechtKaart(p: {
         <div className="gerecht-bediening">
           <Stapper naam="eters" icoon="👤" waarde={p.eters} wijzig={p.zetEters} klein />
           <Stapper naam="avonden" icoon="☾" waarde={p.avonden} wijzig={p.zetAvonden} klein />
-          {p.kanGegeten && (
-            <button className={`gegeten-knop${p.gegetenOp ? ' aan' : ''}`} aria-label={`${r.titel} gegeten`} aria-pressed={!!p.gegetenOp} onClick={p.wisselGegeten} disabled={p.bezig}>
-              ✓<span className="label"> Gegeten</span>
-            </button>
-          )}
         </div>
       </div>
     </motion.li>

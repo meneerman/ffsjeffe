@@ -3,7 +3,7 @@ import userEvent from '@testing-library/user-event'
 import { useState } from 'react'
 import { afterEach, beforeEach, expect, test, vi } from 'vitest'
 import { behoeften, boodschappenRegels } from '../core/boodschappen'
-import { gerecht, ing, recept } from '../core/testdata'
+import { gerecht, ing, menuMet, recept } from '../core/testdata'
 import type { Menu as MenuT, Recept } from '../core/types'
 import { VerouderdFout } from '../data/github'
 import { Menu } from './Menu'
@@ -20,10 +20,9 @@ beforeEach(() => localStorage.clear())
 afterEach(cleanup)
 
 const extra = (n: number) => Array.from({ length: n }, (_, i) => recept(`Extra ${i}`, [ing('ui', 1, 'stuk')]))
-const menu = (gerechten = [gerecht(PASTA, 2)], extraVelden: Partial<MenuT> = {}): MenuT => ({
-  versie: 2, ronde: '2026-11-20T10:00:00.000Z', gerechten, boodschappen: [], vastgezetOp: '2026-11-20T10:00:00.000Z',
-  door: 'Partner', leegmakenOp: null, laatstGegeten: {}, ...extraVelden,
-})
+type MenuOpties = Partial<MenuT> & { boodschappen?: string[]; vastgezetOp?: string; door?: string; ronde?: string }
+const menu = (gerechten = [gerecht(PASTA, 2)], { boodschappen = [], vastgezetOp = '2026-11-20T10:00:00.000Z', door = 'Partner', ronde = '2026-11-20T10:00:00.000Z', ...extraVelden }: MenuOpties = {}): MenuT =>
+  menuMet(gerechten, extraVelden, { id: ronde, vastgezetOp, door, boodschappen })
 
 const drie = () => [gerecht('Extra 0', 2), gerecht('Extra 1', 2), gerecht('Extra 2', 2)]
 
@@ -124,10 +123,13 @@ test('vastzetten schrijft het menu', async () => {
   const { menu: m, sha, bericht } = repo.geschreven[0]
   expect(sha).toBeNull()
   expect(bericht).toBe('Menu vastgezet door Menno')
-  expect(m).toMatchObject({ versie: 2, door: 'Menno', ronde: NU.toISOString(), vastgezetOp: NU.toISOString() })
-  expect(m.gerechten.map((g) => g.receptId)).toEqual(getoond)
+  expect(m.versie).toBe(3)
+  expect(m.batches).toHaveLength(1)
+  const batch = m.batches[0]
+  expect(batch).toMatchObject({ id: NU.toISOString(), door: 'Menno', vastgezetOp: NU.toISOString() })
+  expect(batch.gerechten.map((g) => g.receptId)).toEqual(getoond)
   const perId = Object.fromEntries(data.recepten.map((r) => [r.id, r]))
-  expect(m.boodschappen).toEqual(boodschappenRegels(behoeften(m.gerechten, perId), data.verpakkingen))
+  expect(batch.boodschappen).toEqual(boodschappenRegels(behoeften(batch.gerechten, perId), data.verpakkingen))
   expect(localStorage.getItem('ffsjeffe.concept')).toBeNull()
   expect(herlaad).toHaveBeenCalled()
 })
@@ -143,7 +145,7 @@ test('Keep leegmaken: bevestigen, annuleren, leegmaken', async () => {
   await userEvent.click(within(screen.getByRole('dialog')).getByRole('button', { name: 'Leegmaken' }))
   await waitFor(() => expect(repo.geschreven).toHaveLength(1))
   expect(repo.geschreven[0]).toMatchObject({ sha: 's', bericht: 'Keep leeggemaakt door Menno' })
-  expect(repo.geschreven[0].menu).toMatchObject({ gerechten: [], leegmakenOp: NU.toISOString() })
+  expect(repo.geschreven[0].menu).toMatchObject({ batches: [], leegmakenOp: NU.toISOString() })
   await screen.findByText('Nog niets gepland')
 })
 
@@ -158,11 +160,12 @@ test('gegeten-vinkje alleen op vastgezette gerechten (Bereiden), heen en terug',
   fireEvent.click(screen.getByRole('tab', { name: 'Bereiden' }))
   expect(screen.getAllByRole('button', { name: / gegeten$/ })).toHaveLength(1)
   await userEvent.click(screen.getByRole('button', { name: `${PASTA} gegeten` }))
+  await userEvent.click(within(screen.getByRole('dialog')).getByRole('button', { name: 'Bevestigen' }))
   await screen.findByText('✓ gegeten vandaag')
   const w = repo.geschreven[0]
   expect(w.bericht).toBe(`${PASTA} gegeten — Menno`)
   expect(w.menu.laatstGegeten[PASTA]).toBe('2026-11-21')
-  expect(w.menu.gerechten[0]).toMatchObject({ gegetenOp: '2026-11-21', vorigeKeer: '2026-10-01' })
+  expect(w.menu.batches[0].gerechten[0]).toMatchObject({ gegetenOp: '2026-11-21', vorigeKeer: '2026-10-01' })
   await userEvent.click(screen.getByRole('button', { name: `${PASTA} gegeten` }))
   await waitFor(() => expect(repo.geschreven).toHaveLength(2))
   expect(repo.geschreven[1].menu.laatstGegeten[PASTA]).toBe('2026-10-01')
@@ -193,7 +196,7 @@ test('gerecht met verwijderd recept wordt niet getoond en niet geboodschapt', as
   expect(titels()).toEqual([PASTA])
   await vastzetKnop()
   await waitFor(() => expect(repo.geschreven).toHaveLength(1))
-  expect(repo.geschreven[0].menu.gerechten.map((g) => g.receptId)).toEqual([PASTA])
+  expect(repo.geschreven[0].menu.batches[0].gerechten.map((g) => g.receptId)).toEqual([PASTA])
 })
 
 test('VerouderdFout toont melding en Herladen', async () => {
@@ -472,6 +475,7 @@ test('bereiden: gegeten afvinken schrijft het menu, gegeten gaat onderaan', asyn
   const repo = vastgezet()
   await toon(repo, [], vi.fn(), 'standaard')
   await userEvent.click(screen.getByRole('button', { name: `${PASTA} gegeten` }))
+  await userEvent.click(within(screen.getByRole('dialog')).getByRole('button', { name: 'Bevestigen' }))
   await waitFor(() => expect(repo.geschreven).toHaveLength(1))
   expect(repo.geschreven[0].menu.laatstGegeten[PASTA]).toBeTruthy()
   await waitFor(() => expect(titels()).toEqual([WRAPS, PASTA]))
@@ -544,7 +548,7 @@ test('boodschappen staan per categorie open; wat je uitvinkt gaat niet naar Keep
   await userEvent.click(screen.getByRole('checkbox', { name: /^Olijfolie/ }))
   await vastzetKnop()
   await screen.findByText(/Vastgezet door Menno/)
-  const regels = repo.geschreven[0].menu.boodschappen
+  const regels = repo.geschreven[0].menu.batches[0].boodschappen
   expect(regels.some((r) => r.startsWith('Olijfolie'))).toBe(false)
   expect(regels.some((r) => r.startsWith('Pasta'))).toBe(true)
 })
@@ -556,7 +560,7 @@ test('alles uitvinken en toch vastzetten schrijft een lege lijst zonder fout', a
   for (const vak of screen.getAllByRole('checkbox')) await userEvent.click(vak)
   await vastzetKnop()
   await screen.findByText(/Vastgezet door Menno/)
-  expect(repo.geschreven[0].menu.boodschappen).toEqual([])
+  expect(repo.geschreven[0].menu.batches[0].boodschappen).toEqual([])
 })
 
 test('na een gewijzigd aantal eters staat de nieuwe regel weer aangevinkt', async () => {
@@ -589,7 +593,7 @@ test('na vastzetten is Plannen leeg: de vastgezette gerechten staan alleen in Be
   expect(screen.getByRole('link', { name: PASTA })).toBeTruthy()
 })
 
-test('nieuwe gerechten komen bij het vastgezette menu; alleen de nieuwe regels staan in het nalopen', async () => {
+test('een nieuwe batch komt erbij: Plannen kent de vastgezette batch niet, die blijft zoals hij was', async () => {
   const repo = new NepRepo()
   const perId = Object.fromEntries(repo.recepten_.map((r) => [r.id, r]))
   const oud = [gerecht(PASTA, 2)]
@@ -598,25 +602,39 @@ test('nieuwe gerechten komen bij het vastgezette menu; alleen de nieuwe regels s
   repo.concept_ = { concept: { gerechten: [gerecht(WRAPS, 2)], sinds: '2026-11-21T09:00:00.000Z', door: 'Partner' }, sha: 'c0' }
   await toon(repo)
   expect(kaarten()).toHaveLength(1)
-  expect(screen.queryByRole('checkbox', { name: /^Pasta/ })).toBeNull() // staat al op Keep
+  expect(screen.queryByRole('checkbox', { name: /^Pasta/ })).toBeNull()
   expect(screen.getByRole('checkbox', { name: /^Kipfilet/ })).toBeTruthy()
   await vastzetKnop()
   await screen.findByText(/Vastgezet door Menno/)
   const m = repo.geschreven[0].menu
-  expect(m.gerechten.map((g) => g.receptId)).toEqual([PASTA, WRAPS])
-  expect(m.ronde).toBe('2026-11-20T10:00:00.000Z') // zelfde ronde, geen nieuwe
-  expect(m.boodschappen.some((r) => r.startsWith('Pasta'))).toBe(true)
-  expect(m.boodschappen.some((r) => r.startsWith('Kipfilet'))).toBe(true)
+  expect(m.batches).toHaveLength(2)
+  expect(m.batches[0]).toEqual(repo.menu_!.menu.batches[0] ?? m.batches[0])
+  expect(m.batches[0].gerechten.map((g) => g.receptId)).toEqual([PASTA])
+  expect(m.batches[0].boodschappen).toEqual(oudeRegels)
+  expect(m.batches[1].gerechten.map((g) => g.receptId)).toEqual([WRAPS])
+  expect(m.batches[1].boodschappen.some((r) => r.startsWith('Pasta'))).toBe(false)
+  expect(m.batches[1].boodschappen.some((r) => r.startsWith('Kipfilet'))).toBe(true)
 })
 
-test('een gerecht dat al vastgezet is en opnieuw wordt gekozen, vervangt het oude (niet dubbel)', async () => {
+test('hetzelfde recept in het concept en in een batch: Plannen telt alleen het concept, geen kruisbestuiving', async () => {
   const repo = new NepRepo()
-  repo.menu_ = { menu: menu([gerecht(PASTA, 2)], { boodschappen: [] }), sha: 's' }
+  repo.menu_ = { menu: menu([gerecht(PASTA, 2)], { boodschappen: ['Pasta 200 g'], laatstGegeten: {} }), sha: 's' }
   repo.concept_ = { concept: { gerechten: [gerecht(PASTA, 4)], sinds: '2026-11-21T09:00:00.000Z', door: 'Partner' }, sha: 'c0' }
   await toon(repo)
+  expect(screen.getByRole('checkbox', { name: 'Pasta 400 g' })).toBeTruthy() // 4 eters, niet 4 + 2
+  expect(screen.getByText(/13 van 13|\d+ van \d+/)).toBeTruthy()
   await vastzetKnop()
   await screen.findByText(/Vastgezet door Menno/)
-  expect(repo.geschreven[0].menu.gerechten.map((g) => [g.receptId, g.eters])).toEqual([[PASTA, 4]])
+  const m = repo.geschreven[0].menu
+  expect(m.batches.map((b) => b.gerechten.map((g) => [g.receptId, g.eters]))).toEqual([[[PASTA, 2]], [[PASTA, 4]]])
+})
+
+test('uitgevinkte regels van een eerdere batch komen niet terug in Plannen', async () => {
+  const repo = new NepRepo()
+  repo.menu_ = { menu: menu([gerecht(PASTA, 2)], { boodschappen: [] }), sha: 's' } // alles toen uitgevinkt
+  repo.concept_ = { concept: { gerechten: [gerecht(WRAPS, 2)], sinds: '2026-11-21T09:00:00.000Z', door: 'Partner' }, sha: 'c0' }
+  await toon(repo)
+  expect(screen.queryByRole('checkbox', { name: /^Pasta/ })).toBeNull()
 })
 
 test('op de boodschappenlijst vraagt eerst "Weet je het zeker?": annuleren schrijft niets', async () => {
@@ -640,7 +658,7 @@ test('in het bevestigscherm kun je nog uitvinken; dat gaat niet naar Keep', asyn
   await userEvent.click(within(dlg).getByRole('checkbox', { name: /^Olijfolie/ }))
   await userEvent.click(within(dlg).getByRole('button', { name: 'Ja, naar Keep' }))
   await screen.findByText(/Vastgezet door Menno/)
-  const regels = repo.geschreven[0].menu.boodschappen
+  const regels = repo.geschreven[0].menu.batches[0].boodschappen
   expect(regels.some((r) => r.startsWith('Olijfolie'))).toBe(false)
   expect(regels.some((r) => r.startsWith('Pasta'))).toBe(true)
 })
@@ -760,4 +778,51 @@ test('terug in Bereiden blijft Bereiden staan', async () => {
   cleanup()
   await toon(repo, [], vi.fn(), 'standaard')
   expect(screen.getByRole('tab', { name: 'Bereiden' }).getAttribute('aria-selected')).toBe('true')
+})
+
+test('Bereiden toont elke batch apart met eigen In huis-lijst', async () => {
+  const repo = new NepRepo()
+  repo.menu_ = { menu: { ...menu([gerecht(PASTA, 2)], { boodschappen: ['Pasta 200 g'] }), batches: [
+    { id: 'B1', vastgezetOp: '2026-11-14T10:00:00.000Z', door: 'P', gerechten: [gerecht(PASTA, 2)], boodschappen: ['Pasta 200 g'] },
+    { id: 'B2', vastgezetOp: '2026-11-21T10:00:00.000Z', door: 'P', gerechten: [gerecht(WRAPS, 2)], boodschappen: ['Kipfilet 300 g'] },
+  ] }, sha: 's' }
+  await toon(repo, [], vi.fn(), 'standaard')
+  const batches = screen.getAllByTestId('batch')
+  expect(batches).toHaveLength(2)
+  expect(within(batches[0]).getByRole('heading').textContent).toBe('Besteld 14 november')
+  expect(within(batches[0]).getByRole('link', { name: PASTA })).toBeTruthy()
+  expect(within(batches[1]).getByRole('link', { name: WRAPS })).toBeTruthy()
+  await userEvent.click(within(batches[1]).getByRole('button', { name: /In huis/ }))
+  expect(within(batches[1]).getByText('Kipfilet 300 g')).toBeTruthy()
+  expect(within(batches[1]).queryByText('Pasta 200 g')).toBeNull()
+  expect(screen.getByText(/0 van 2 gegeten/)).toBeTruthy()
+})
+
+test('Gegeten: Annuleren schrijft niets, Bevestigen met sterren bewaart de beoordeling', async () => {
+  const repo = vastgezet()
+  await toon(repo, [], vi.fn(), 'standaard')
+  await userEvent.click(screen.getByRole('button', { name: `${PASTA} gegeten` }))
+  await userEvent.click(within(screen.getByRole('dialog')).getByRole('button', { name: 'Annuleren' }))
+  expect(repo.geschreven).toHaveLength(0)
+  await userEvent.click(screen.getByRole('button', { name: `${PASTA} gegeten` }))
+  await userEvent.click(within(screen.getByRole('dialog')).getByRole('button', { name: '4 sterren' }))
+  await userEvent.click(within(screen.getByRole('dialog')).getByRole('button', { name: 'Bevestigen' }))
+  await waitFor(() => expect(repo.geschreven).toHaveLength(1))
+  expect(repo.geschreven[0].menu.beoordelingen).toEqual({ [PASTA]: 4 })
+  expect(repo.geschreven[0].menu.batches[0].gerechten[0].gegetenOp).toBe('2026-11-21')
+})
+
+test('Gegeten: een eerdere beoordeling staat voorgeselecteerd en terugzetten laat hem staan', async () => {
+  const repo = vastgezet()
+  repo.menu_!.menu.beoordelingen = { [PASTA]: 2 }
+  await toon(repo, [], vi.fn(), 'standaard')
+  await userEvent.click(screen.getByRole('button', { name: `${PASTA} gegeten` }))
+  expect(within(screen.getByRole('dialog')).getByRole('button', { name: '2 sterren' }).getAttribute('aria-pressed')).toBe('true')
+  await userEvent.click(within(screen.getByRole('dialog')).getByRole('button', { name: 'Bevestigen' }))
+  await waitFor(() => expect(repo.geschreven).toHaveLength(1))
+  await userEvent.click(await screen.findByRole('button', { name: `${PASTA} gegeten` }))
+  await waitFor(() => expect(repo.geschreven).toHaveLength(2))
+  expect(screen.queryByRole('dialog')).toBeNull()
+  expect(repo.geschreven[1].menu.beoordelingen).toEqual({ [PASTA]: 2 })
+  expect(repo.geschreven[1].menu.batches[0].gerechten[0].gegetenOp).toBeNull()
 })

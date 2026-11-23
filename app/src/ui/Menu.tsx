@@ -54,7 +54,12 @@ export function Menu({ data, repo, naam, herlaad, bijgewerkt, nu = () => new Dat
   // in het nalopen alleen wat nog niet op Keep staat
   const opKeep = new Set(menu?.boodschappen ?? [])
   // alleen als je nu iets plant; zonder gepland gerecht is er niets om na te lopen
-  const nieuweItems = gerechten.length === 0 ? [] : items.filter((i) => !opKeep.has(i.regel))
+  // wat je bij het vorige vastzetten uitvinkte (in huis) staat niet op Keep maar komt ook niet terug
+  const vastRegels = useMemo(
+    () => new Set(boodschappenItems(behoeften(menu?.gerechten ?? [], perId), data.verpakkingen).map((i) => i.regel)),
+    [menu, perId, data.verpakkingen],
+  )
+  const nieuweItems = gerechten.length === 0 ? [] : items.filter((i) => !opKeep.has(i.regel) && !vastRegels.has(i.regel))
   // wat je uitvinkt gaat deze ronde niet naar Keep; alleen op dit toestel, tot het vastzetten
   const [uit, setUit] = useState<Set<string>>(new Set())
   const wisselRegel = (regel: string) => setUit((u) => {
@@ -62,7 +67,7 @@ export function Menu({ data, repo, naam, herlaad, bijgewerkt, nu = () => new Dat
     if (!n.delete(regel)) n.add(regel)
     return n
   })
-  const regels = items.filter((i) => !uit.has(i.regel)).map((i) => i.regel)
+  const regels = items.filter((i) => opKeep.has(i.regel) || (!vastRegels.has(i.regel) && !uit.has(i.regel))).map((i) => i.regel)
   const standaard = data.instellingen.huishouden
 
   const [toevoegen, setToevoegen] = useState(false)

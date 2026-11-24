@@ -75,24 +75,26 @@ export function Recepten({ data, repo, naam }: SchermProps) {
       <h1 className="kop">Alle <em>recepten</em></h1>
 
       <div className="zoekbalk" role="search">
-        <svg className="zoek-icoon" viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" aria-hidden="true">
-          <circle cx="11" cy="11" r="6.5" /><path d="M16 16l4.5 4.5" />
-        </svg>
-        <input
-          type="search"
-          aria-label="Zoek op ingrediënt"
-          placeholder="Zoek op ingrediënt, bijv. broccoli"
-          value={zoek}
-          onChange={(e) => setZoek(e.target.value)}
-          onKeyDown={(e) => { if (e.key === 'Enter') e.currentTarget.blur() }}
-          enterKeyHint="search"
-          autoComplete="off"
-          autoCapitalize="none"
-          spellCheck={false}
-        />
-        {zoek && (
-          <motion.button whileTap={druk} className="zoek-wis" aria-label="Zoekopdracht wissen" onClick={() => setZoek('')}>×</motion.button>
-        )}
+        <div className="zoekveld">
+          <svg className="zoek-icoon" viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" aria-hidden="true">
+            <circle cx="11" cy="11" r="6.5" /><path d="M16 16l4.5 4.5" />
+          </svg>
+          <input
+            type="search"
+            aria-label="Zoek op ingrediënt"
+            placeholder="Zoek op ingrediënt, bijv. broccoli"
+            value={zoek}
+            onChange={(e) => setZoek(e.target.value)}
+            onKeyDown={(e) => { if (e.key === 'Enter') e.currentTarget.blur() }}
+            enterKeyHint="search"
+            autoComplete="off"
+            autoCapitalize="none"
+            spellCheck={false}
+          />
+          {zoek && (
+            <motion.button whileTap={druk} className="zoek-wis" aria-label="Zoekopdracht wissen" onClick={() => setZoek('')}>×</motion.button>
+          )}
+        </div>
       </div>
       {treffers && (
         <p className="zoek-stand zacht klein" aria-live="polite">

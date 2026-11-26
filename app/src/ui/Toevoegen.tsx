@@ -32,8 +32,8 @@ export function Toevoegen({ opties, kies, sluit, meta, winkels }: { opties: Rece
   }
 
   return (
-    <motion.div className="paneel-achtergrond" variants={achtergrondVervaag} initial="verborgen" animate="zichtbaar" exit="verborgen" onClick={sluit}>
-      <motion.div className="paneel deck-paneel" role="dialog" aria-label="Gerecht toevoegen" variants={sheet} initial="verborgen" animate="zichtbaar" exit="verborgen" onClick={(e) => e.stopPropagation()}>
+    <motion.div className="paneel-achtergrond" variants={achtergrondVervaag} initial="verborgen" animate="zichtbaar" exit="weg" onClick={sluit}>
+      <motion.div className="paneel deck-paneel" role="dialog" aria-label="Gerecht toevoegen" variants={sheet} initial="verborgen" animate="zichtbaar" exit="weg" onClick={(e) => e.stopPropagation()}>
         <div className="deck-kop">
           <div className="eyebrow">gerecht erbij</div>
           <button className="link-zacht" onClick={sluit}>Sluiten</button>

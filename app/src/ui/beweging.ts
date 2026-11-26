@@ -8,12 +8,15 @@ export const zacht: Transition = { type: 'spring', stiffness: 260, damping: 30 }
 export const sheet: Variants = {
   verborgen: { y: 40, opacity: 0 },
   zichtbaar: { y: 0, opacity: 1, transition: zacht },
+  // weggaan is korter en kleiner dan binnenkomen
+  weg: { y: 12, opacity: 0, transition: { duration: 0.15, ease: 'easeOut' } },
 }
 
 /** De donkere laag achter een venster. */
 export const achtergrondVervaag: Variants = {
   verborgen: { opacity: 0 },
   zichtbaar: { opacity: 1, transition: { duration: 0.2 } },
+  weg: { opacity: 0, transition: { duration: 0.15, ease: 'easeOut' } },
 }
 
 /** Kaart of regel die in een lijst verschijnt of verdwijnt. */
@@ -24,7 +27,7 @@ export const lijstItem: Variants = {
 }
 
 /** Indrukeffect bij tikken. */
-export const druk = { scale: 0.97 }
+export const druk = { scale: 0.96 }
 
 const AFSTAND = 100
 const SNELHEID = 500

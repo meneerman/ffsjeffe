@@ -7,8 +7,8 @@ export function Venster({ open, sluit, label, ruim = false, children }: { open: 
   return (
     <AnimatePresence>
       {open && (
-        <motion.div className="paneel-achtergrond" variants={achtergrondVervaag} initial="verborgen" animate="zichtbaar" exit="verborgen" onClick={sluit}>
-          <motion.div className={`paneel${ruim ? ' ruim' : ''}`} role="dialog" aria-label={label} variants={sheet} initial="verborgen" animate="zichtbaar" exit="verborgen" onClick={(e) => e.stopPropagation()}>
+        <motion.div className="paneel-achtergrond" variants={achtergrondVervaag} initial="verborgen" animate="zichtbaar" exit="weg" onClick={sluit}>
+          <motion.div className={`paneel${ruim ? ' ruim' : ''}`} role="dialog" aria-label={label} variants={sheet} initial="verborgen" animate="zichtbaar" exit="weg" onClick={(e) => e.stopPropagation()}>
             {children}
           </motion.div>
         </motion.div>

@@ -195,7 +195,7 @@ test('vooraf staat als chip bij de bereidingstijd', async () => {
   const d = await data()
   const r = { ...recept2(d), vooraf: 'een nacht weken' }
   render(<ReceptPagina recept={r} data={d} repo={new NepRepo()} naam="Menno" />)
-  expect(screen.getByText('⏳ Vooraf: een nacht weken')).toBeTruthy()
+  expect(screen.getByText('⏳ 1 dag van tevoren: een nacht weken')).toBeTruthy()
 })
 
 test('zonder vooraf geen chip', async () => {
@@ -260,9 +260,9 @@ const toon = (d: AppData, r: AppData['recepten'][number]) => render(<ReceptPagin
 test('voorbereiding met "Vooraf:" staat in twee blokken, zonder voorvoegsel, vinkjes houden hun nummer', async () => {
   const { d, r } = await metVoorbereiding(['Vooraf: snijd de kip.', 'vooraf: marineer de kip.', 'Snijd de tomaten.'])
   const { unmount } = toon(d, r)
-  const vooraf = screen.getByRole('list', { name: 'Dag van tevoren' })
+  const vooraf = screen.getByRole('list', { name: 'Voorbereiding · 1 dag van tevoren' })
   expect(within(vooraf).getAllByRole('checkbox').map((c) => c.getAttribute('aria-label'))).toEqual(['Snijd de kip.', 'Marineer de kip.'])
-  const dag = screen.getByRole('list', { name: 'Op de dag zelf' })
+  const dag = screen.getByRole('list', { name: 'Voorbereiding' })
   await userEvent.click(within(dag).getByRole('checkbox', { name: 'Snijd de tomaten.' }))
   const sleutel = Object.keys(localStorage).find((k) => k.startsWith('ffsjeffe.koken.'))!
   expect(JSON.parse(localStorage.getItem(sleutel)!).v).toEqual([2])
@@ -271,17 +271,23 @@ test('voorbereiding met "Vooraf:" staat in twee blokken, zonder voorvoegsel, vin
   expect((screen.getByRole('checkbox', { name: 'Snijd de tomaten.' }) as HTMLInputElement).checked).toBe(true)
 })
 
-test('alleen vooraf-regels: geen blok "Op de dag zelf"', async () => {
+test('alleen vooraf-regels: geen tweede blok "Voorbereiding"', async () => {
   const { d, r } = await metVoorbereiding(['Vooraf: week de erwten.'])
   toon(d, r)
-  expect(screen.getByRole('list', { name: 'Dag van tevoren' })).toBeTruthy()
-  expect(screen.queryByText('Op de dag zelf')).toBeNull()
+  expect(screen.getByRole('list', { name: 'Voorbereiding · 1 dag van tevoren' })).toBeTruthy()
+  expect(screen.queryByText('Voorbereiding')).toBeNull()
 })
 
 test('zonder vooraf-regels geen kopjes', async () => {
   const { d, r } = await metVoorbereiding(['Snijd de tomaten.'])
   toon(d, r)
-  expect(screen.queryByText('Dag van tevoren')).toBeNull()
-  expect(screen.queryByText('Op de dag zelf')).toBeNull()
+  expect(screen.queryByText(/van tevoren/)).toBeNull()
+  expect(screen.getByText('Voorbereiding')).toBeTruthy()
   expect(screen.getByRole('checkbox', { name: 'Snijd de tomaten.' })).toBeTruthy()
+})
+
+test('de chip noemt "1 dag van tevoren" in plaats van "Vooraf"', async () => {
+  const d = await data()
+  toon(d, { ...recept2(d), vooraf: 'een nacht marineren' })
+  expect(screen.getByText('⏳ 1 dag van tevoren: een nacht marineren')).toBeTruthy()
 })

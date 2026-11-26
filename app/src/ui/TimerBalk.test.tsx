@@ -31,6 +31,19 @@ test('starten telt af zonder de stap af te vinken, en meerdere timers lopen tege
   expect(screen.queryByRole('list', { name: 'Timers' })).toBeNull()
 })
 
+test('de kaart zelf loopt leeg als balk', () => {
+  render(pagina())
+  const kaart = knop(/^Stap 1: Gril/).closest('li')!
+  expect(kaart.className).not.toContain('timer-')
+  fireEvent.click(knop('Start timer 7 min bij stap 1'))
+  expect(kaart.className).toContain('timer-loopt')
+  expect(kaart.style.getPropertyValue('--rest')).toBe('1')
+  verder(210)
+  expect(Number(kaart.style.getPropertyValue('--rest'))).toBeCloseTo(0.5, 1)
+  verder(210)
+  expect(kaart.className).toContain('timer-af')
+})
+
 test('afgelopen: geluid blijft klinken tot Zet uit', () => {
   render(pagina())
   fireEvent.click(knop('Start timer 7 min bij stap 1'))

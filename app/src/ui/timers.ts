@@ -58,8 +58,10 @@ export function klok(ms: number): string {
   return u > 0 ? `${u}:${twee(m)}:${twee(rest)}` : `${m}:${twee(rest)}`
 }
 
-/** Wat de timers van één kaart met die kaart doen. */
-export function kaartStand(timers: Timer[], nu: number, plek: string): '' | 'loopt' | 'af' {
-  const hier = timers.filter((t) => t.plek === plek)
-  return hier.some((t) => t.eind <= nu) ? 'af' : hier.length ? 'loopt' : ''
+/** Wat de timers van één kaart met die kaart doen; `rest` (1 → 0) is van de timer die het eerst afloopt. */
+export function kaartStand(timers: Timer[], nu: number, plek: string): { stand: '' | 'loopt' | 'af'; rest: number } {
+  const eerste = timers.filter((t) => t.plek === plek).sort((a, b) => a.eind - b.eind)[0]
+  if (!eerste) return { stand: '', rest: 0 }
+  const rest = Math.max(0, Math.min(1, (eerste.eind - nu) / (eerste.duur * 1000)))
+  return { stand: eerste.eind <= nu ? 'af' : 'loopt', rest }
 }

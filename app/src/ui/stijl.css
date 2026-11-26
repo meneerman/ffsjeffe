@@ -177,22 +177,25 @@ footer { margin-top: 40px; text-align: center; }
 .tegelijk { display: block; margin-top: 8px; font-size: 14px; line-height: 1.4; color: var(--accent); }
 .stapkaart.klaar .tegelijk { display: none; }
 
-/* timers in een stap- of voorbereidingskaart */
-.timers { display: flex; flex-wrap: wrap; justify-content: flex-end; gap: 8px; padding: 0 14px 12px; }
-.stap + .timers { margin-top: -6px; }
-.vinklijst .timers { padding: 0 0 12px 38px; margin-top: -4px; justify-content: flex-start; }
-.timer-start { display: inline-flex; align-items: center; gap: 6px; min-height: 40px; padding: 0 14px; border-radius: 99px; border: 1px solid rgba(185, 168, 255, 0.35); background: rgba(185, 168, 255, 0.08); color: var(--accent); font-size: 14px; font-weight: 600; font-variant-numeric: tabular-nums; }
-.timer { flex: 1 0 100%; }
-.timer-balk { height: 8px; border-radius: 99px; background: var(--vlak-sterk); overflow: hidden; }
-.timer-balk span { display: block; height: 100%; background: var(--accent); transform-origin: left; transition: transform 0.25s linear; }
-.timer-rij { display: flex; align-items: center; gap: 8px; margin-top: 8px; }
-.timer-rij .knop { min-height: 40px; font-size: 14px; }
-.timer-klok { margin-right: auto; font-size: 30px; font-weight: 600; font-variant-numeric: tabular-nums; }
-.timer.af .timer-klok { font-size: 21px; color: var(--weg); }
-.timer-uit { padding-left: 22px; padding-right: 22px; font-weight: 600; }
-.stapkaart.timer-af, .vinklijst li.timer-af { border-color: var(--weg); box-shadow: 0 0 0 4px rgba(255, 91, 74, 0.25); animation: schud 0.6s linear infinite; }
-.vinklijst li.timer-af { border-radius: 12px; border-bottom-color: var(--weg); }
-.vinklijst li.timer-af label, .vinklijst li.timer-af .timers { margin-left: 8px; margin-right: 8px; }
+/* timers: een klein klokje in de hoek; loopt hij, dan is de kaart zelf de balk die leegloopt */
+.timers { display: flex; flex-wrap: wrap; justify-content: flex-end; align-items: center; gap: 2px 6px; padding: 0 8px 6px; }
+.stap + .timers { margin-top: -16px; }
+.vinklijst .timers { margin-top: -14px; padding: 0 0 4px 30px; }
+.timer-start { display: inline-flex; align-items: center; justify-content: center; gap: 5px; min-width: 40px; min-height: 40px; padding: 0 8px; border-radius: 99px; border: 0; background: none; color: var(--zacht); font-size: 12.5px; font-variant-numeric: tabular-nums; }
+@media (hover: hover) { .timer-start:hover { color: var(--accent); } }
+.timer { display: flex; flex: 1 0 100%; align-items: center; gap: 4px; padding-left: 52px; }
+.stap + .timers:has(.timer) { margin-top: -8px; }
+.vinklijst .timers:has(.timer) { margin-top: -6px; padding-left: 0; }
+.vinklijst .timer { padding-left: 38px; }
+.timer-klok { margin-right: auto; font-size: 22px; font-weight: 600; font-variant-numeric: tabular-nums; color: var(--accent); }
+.timer-knop { min-width: 40px; min-height: 40px; padding: 0; border: 0; border-radius: 99px; background: none; color: var(--zacht); font-size: 15px; font-variant-numeric: tabular-nums; }
+.timer-knop[aria-label="Stop"] { font-size: 22px; }
+.timer.af .timer-klok { color: var(--weg); }
+.timer-uit { min-height: 40px; padding-left: 22px; padding-right: 22px; font-size: 14px; font-weight: 600; }
+.stapkaart.timer-loopt, .vinklijst li.timer-loopt { border: 1px solid var(--accent); background: linear-gradient(to right, rgba(185, 168, 255, 0.22) calc(var(--rest) * 100%), rgba(185, 168, 255, 0.04) calc(var(--rest) * 100%)); }
+.stapkaart.timer-loopt { box-shadow: 0 0 0 3px rgba(185, 168, 255, 0.14); }
+.stapkaart.timer-af, .vinklijst li.timer-af { border: 1px solid var(--weg); background: rgba(255, 91, 74, 0.18); box-shadow: 0 0 0 4px rgba(255, 91, 74, 0.25); animation: schud 0.6s linear infinite; }
+.vinklijst li.timer-loopt, .vinklijst li.timer-af { margin: 8px 0; padding: 0 10px; border-radius: 16px; }
 @keyframes schud { 0%, 50%, 100% { translate: 0; } 5%, 15%, 25%, 35% { translate: -5px; rotate: -0.6deg; } 10%, 20%, 30%, 40% { translate: 5px; rotate: 0.6deg; } 45% { translate: 0; rotate: 0deg; } }
 @media (prefers-reduced-motion: reduce) { .stapkaart.timer-af, .vinklijst li.timer-af { animation: none; } }
 
@@ -207,7 +210,13 @@ footer { margin-top: 40px; text-align: center; }
 .timerbalk li.af .timerbalk-klok { color: var(--weg); }
 .timerbalk-naam { overflow: hidden; white-space: nowrap; text-overflow: ellipsis; font-size: 13px; color: var(--zacht); }
 .timerbalk .knop { min-height: 40px; }
-.notities { white-space: pre-wrap; color: var(--zacht); }
+.notities { white-space: pre-wrap; overflow-wrap: anywhere; color: var(--zacht); font-size: 14px; }
+.notitieblok { margin-top: 22px; }
+.notitieblok summary { display: inline-flex; align-items: center; gap: 8px; min-height: 40px; color: var(--zacht); font-size: 13px; cursor: pointer; list-style: none; -webkit-tap-highlight-color: transparent; }
+.notitieblok summary::-webkit-details-marker { display: none; }
+.notitieblok summary::after { content: '›'; font-size: 18px; line-height: 1; transition: rotate 0.15s ease-out; }
+.notitieblok[open] summary::after { rotate: 90deg; }
+.notitieblok p { margin: 4px 0 0; }
 .bron { display: inline-block; margin-top: 18px; text-decoration: none; }
 
 /* Kaart: kop (titel + ×) en bediening (eters, avonden, gegeten) */
@@ -346,8 +355,8 @@ p, li, .stap-tekst, .tegelijk { text-wrap: pretty; }
 .paneel .nalopen-groep { border-radius: 12px; }
 
 /* indrukken: knoppen zonder motion */
-.pil, .knop, .gegeten-knop, .verwijder-knop, .stapper button, .filters .chip, .chip.origineel, .pakop, .ster, .timer-start { transition-property: scale, background-color, border-color, color, opacity, box-shadow; transition-duration: 0.15s; transition-timing-function: ease-out; }
-:is(.pil, .knop, .gegeten-knop, .verwijder-knop, .stapper button, .filters .chip, .chip.origineel, .pakop, .ster, .timer-start):active:not(:disabled) { scale: 0.96; }
+.pil, .knop, .gegeten-knop, .verwijder-knop, .stapper button, .filters .chip, .chip.origineel, .pakop, .ster, .timer-start, .timer-knop { transition-property: scale, background-color, border-color, color, opacity, box-shadow; transition-duration: 0.15s; transition-timing-function: ease-out; }
+:is(.pil, .knop, .gegeten-knop, .verwijder-knop, .stapper button, .filters .chip, .chip.origineel, .pakop, .ster, .timer-start, .timer-knop):active:not(:disabled) { scale: 0.96; }
 
 /* raakvlak van minstens 40 tot 44px, zonder dat vlakken van buren elkaar raken */
 .filters .chip { min-height: 40px; }

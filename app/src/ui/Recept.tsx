@@ -1,4 +1,4 @@
-import { Fragment, useState } from 'react'
+import { Fragment, useState, type CSSProperties } from 'react'
 import { schaalfactor } from '../core/boodschappen'
 import { gerechtVoorRecept } from '../core/menu'
 import { aantalPorties, schaalStap, toonIngredient } from '../core/schalen'
@@ -15,6 +15,9 @@ import { useSleepVinken } from './useSleepVinken'
 import { Wijzigingen } from './Wijzigingen'
 import { Winkelbord, Winkelbordjes } from './Winkel'
 import type { AppData, Repo } from './useData'
+
+/** De kaartachtergrond is de voortgangsbalk van zijn timer. */
+const vulling = (rest: number) => ({ '--rest': rest }) as CSSProperties
 
 type Voortgang = { i: number[]; v: number[]; s: number[] }
 
@@ -144,9 +147,9 @@ export function ReceptPagina({ recept: r, data, repo, naam, bijgewerkt }: { rece
                   {blok.regels.map(({ n, regel }) => {
                     const tekst = schaalStap(regel, factor)
                     const plek = `${r.id}|v${n}`
-                    const stand = kaartStand(timers, nu, plek)
+                    const { stand, rest } = kaartStand(timers, nu, plek)
                     return (
-                      <li key={n} data-vink-id={String(n)} className={`${vg.v.includes(n) ? 'af' : ''}${stand ? ` timer-${stand}` : ''}`}>
+                      <li key={n} data-vink-id={String(n)} className={`${vg.v.includes(n) ? 'af' : ''}${stand ? ` timer-${stand}` : ''}`} style={stand ? vulling(rest) : undefined}>
                         <label>
                           <input type="checkbox" checked={vg.v.includes(n)} onChange={() => wissel('v', n)} aria-label={tekst} {...sleepV.vinkvak(String(n))} />
                           <span>{tekst}</span>
@@ -183,9 +186,9 @@ export function ReceptPagina({ recept: r, data, repo, naam, bijgewerkt }: { rece
                 const tekst = schaalStap(r.stappen[n], factor)
                 const [doen, tegelijk] = tekst.split(TEGELIJK)
                 const plek = `${r.id}|s${n}`
-                const stand = kaartStand(timers, nu, plek)
+                const { stand, rest } = kaartStand(timers, nu, plek)
                 return (
-                  <li key={n} className={`stapkaart${klaar ? ' klaar' : ''}${isNu ? ' nu' : ''}${stand ? ` timer-${stand}` : ''}`}>
+                  <li key={n} className={`stapkaart${klaar ? ' klaar' : ''}${isNu ? ' nu' : ''}${stand ? ` timer-${stand}` : ''}`} style={stand ? vulling(rest) : undefined}>
                     <button
                       className="stap"
                       aria-label={`Stap ${n + 1}: ${tekst}`}
@@ -209,10 +212,10 @@ export function ReceptPagina({ recept: r, data, repo, naam, bijgewerkt }: { rece
       )}
 
       {r.notities && (
-        <>
-          <div className="eyebrow sectie">Notities</div>
+        <details className="notitieblok">
+          <summary>Notities bij dit recept</summary>
           <p className="notities">{r.notities}</p>
-        </>
+        </details>
       )}
 
       <Wijzigingen receptId={r.id} repo={repo} naam={naam} />

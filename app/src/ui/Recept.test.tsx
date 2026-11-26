@@ -31,7 +31,8 @@ test('kop, chips, benodigdheden, geschaalde ingrediënten, voorbereiding en bere
   expect(screen.getByText('300 g pasta')).toBeTruthy()
   expect(screen.getByRole('checkbox', { name: 'Snijd 1,5 zalmfilets in blokjes van 2 cm.' })).toBeTruthy()
   expect(screen.getByText('Kook 300 g pasta beetgaar volgens de verpakking.')).toBeTruthy()
-  expect(screen.getByText('Lekker met wat citroenrasp erover.')).toBeTruthy()
+  expect(screen.getByText('Lekker met wat citroenrasp erover.').closest('details')!.open).toBe(false)
+  expect(screen.getByText('Notities bij dit recept')).toBeTruthy()
 })
 
 test('stappen afvinken: huidige stap uitgelicht, voortgang, onthouden', async () => {

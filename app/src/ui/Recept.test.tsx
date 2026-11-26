@@ -250,3 +250,38 @@ test('beoordeling staat bij het recept, alleen als die er is', async () => {
   render(<ReceptPagina recept={recept2(nul)} data={nul} repo={new NepRepo()} naam="Menno" />)
   expect(screen.getByLabelText('Beoordeling 0 van 5')).toBeTruthy()
 })
+
+async function metVoorbereiding(voorbereiding: string[]) {
+  const d = await data()
+  return { d, r: { ...recept2(d), voorbereiding } }
+}
+const toon = (d: AppData, r: AppData['recepten'][number]) => render(<ReceptPagina recept={r} data={d} repo={new NepRepo()} naam="Menno" />)
+
+test('voorbereiding met "Vooraf:" staat in twee blokken, zonder voorvoegsel, vinkjes houden hun nummer', async () => {
+  const { d, r } = await metVoorbereiding(['Vooraf: snijd de kip.', 'vooraf: marineer de kip.', 'Snijd de tomaten.'])
+  const { unmount } = toon(d, r)
+  const vooraf = screen.getByRole('list', { name: 'Dag van tevoren' })
+  expect(within(vooraf).getAllByRole('checkbox').map((c) => c.getAttribute('aria-label'))).toEqual(['Snijd de kip.', 'Marineer de kip.'])
+  const dag = screen.getByRole('list', { name: 'Op de dag zelf' })
+  await userEvent.click(within(dag).getByRole('checkbox', { name: 'Snijd de tomaten.' }))
+  const sleutel = Object.keys(localStorage).find((k) => k.startsWith('ffsjeffe.koken.'))!
+  expect(JSON.parse(localStorage.getItem(sleutel)!).v).toEqual([2])
+  unmount()
+  toon(d, r)
+  expect((screen.getByRole('checkbox', { name: 'Snijd de tomaten.' }) as HTMLInputElement).checked).toBe(true)
+})
+
+test('alleen vooraf-regels: geen blok "Op de dag zelf"', async () => {
+  const { d, r } = await metVoorbereiding(['Vooraf: week de erwten.'])
+  toon(d, r)
+  expect(screen.getByRole('list', { name: 'Dag van tevoren' })).toBeTruthy()
+  expect(screen.queryByText('Op de dag zelf')).toBeNull()
+})
+
+test('zonder vooraf-regels geen kopjes', async () => {
+  const { d, r } = await metVoorbereiding(['Snijd de tomaten.'])
+  toon(d, r)
+  expect(screen.queryByText('Dag van tevoren')).toBeNull()
+  expect(screen.queryByText('Op de dag zelf')).toBeNull()
+  expect(screen.getByRole('checkbox', { name: 'Snijd de tomaten.' })).toBeTruthy()
+})

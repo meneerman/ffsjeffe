@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { Fragment, useEffect, useState } from 'react'
 import { schaalfactor } from '../core/boodschappen'
 import { gerechtVoorRecept } from '../core/menu'
 import { aantalPorties, schaalStap, toonIngredient } from '../core/schalen'
@@ -47,6 +47,21 @@ function useSchermAan(): boolean {
 }
 
 type Voortgang = { i: number[]; v: number[]; s: number[] }
+
+const VOORAF = /^vooraf:\s*/i
+
+/** Regels met "Vooraf:" horen bij de dag ervoor. `n` blijft het nummer in het recept, zodat vinkjes bij hun regel blijven. */
+function voorbereidingBlokken(voorbereiding: string[]): { kop?: string; regels: { n: number; regel: string }[] }[] {
+  const alle = voorbereiding.map((regel, n) => ({ n, regel }))
+  if (!voorbereiding.some((v) => VOORAF.test(v))) return [{ regels: alle }]
+  const eerder = alle
+    .filter((x) => VOORAF.test(x.regel))
+    .map(({ n, regel }) => { const kaal = regel.replace(VOORAF, ''); return { n, regel: kaal.charAt(0).toUpperCase() + kaal.slice(1) } })
+  return [
+    { kop: 'Dag van tevoren', regels: eerder },
+    { kop: 'Op de dag zelf', regels: alle.filter((x) => !VOORAF.test(x.regel)) },
+  ].filter((blok) => blok.regels.length > 0)
+}
 
 export function ReceptPagina({ recept: r, data, repo, naam }: { recept: Recept; data: AppData; repo: Repo; naam: string }) {
   const schermAan = useSchermAan()
@@ -139,19 +154,26 @@ export function ReceptPagina({ recept: r, data, repo, naam }: { recept: Recept; 
       {r.voorbereiding.length > 0 && (
         <>
           <div className="eyebrow sectie">Voorbereiding</div>
-          <ul className="vinklijst voorbereiding" {...sleepV.lijst}>
-            {r.voorbereiding.map((v, n) => {
-              const tekst = schaalStap(v, factor)
-              return (
-                <li key={n} data-vink-id={String(n)} className={vg.v.includes(n) ? 'af' : ''}>
-                  <label>
-                    <input type="checkbox" checked={vg.v.includes(n)} onChange={() => wissel('v', n)} aria-label={tekst} {...sleepV.vinkvak(String(n))} />
-                    <span>{tekst}</span>
-                  </label>
-                </li>
-              )
-            })}
-          </ul>
+          <div {...sleepV.lijst}>
+            {voorbereidingBlokken(r.voorbereiding).map((blok) => (
+              <Fragment key={blok.kop ?? ''}>
+                {blok.kop && <h3 className="blok-kop" aria-hidden="true">{blok.kop}</h3>}
+                <ul className="vinklijst voorbereiding" aria-label={blok.kop}>
+                  {blok.regels.map(({ n, regel }) => {
+                    const tekst = schaalStap(regel, factor)
+                    return (
+                      <li key={n} data-vink-id={String(n)} className={vg.v.includes(n) ? 'af' : ''}>
+                        <label>
+                          <input type="checkbox" checked={vg.v.includes(n)} onChange={() => wissel('v', n)} aria-label={tekst} {...sleepV.vinkvak(String(n))} />
+                          <span>{tekst}</span>
+                        </label>
+                      </li>
+                    )
+                  })}
+                </ul>
+              </Fragment>
+            ))}
+          </div>
         </>
       )}
 

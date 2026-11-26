@@ -177,12 +177,14 @@ footer { margin-top: 40px; text-align: center; }
 .tegelijk { display: block; margin-top: 8px; font-size: 14px; line-height: 1.4; color: var(--accent); }
 .stapkaart.klaar .tegelijk { display: none; }
 
-/* timers: een klein klokje in de hoek; loopt hij, dan is de kaart zelf de balk die leegloopt */
-.timers { display: flex; flex-wrap: wrap; justify-content: flex-end; align-items: center; gap: 2px 6px; padding: 0 8px 6px; }
-.stap + .timers { margin-top: -16px; }
-.vinklijst .timers { margin-top: -14px; padding: 0 0 4px 30px; }
-.timer-start { display: inline-flex; align-items: center; justify-content: center; gap: 5px; min-width: 40px; min-height: 40px; padding: 0 8px; border-radius: 99px; border: 0; background: none; color: var(--zacht); font-size: 12.5px; font-variant-numeric: tabular-nums; }
-@media (hover: hover) { .timer-start:hover { color: var(--accent); } }
+/* timers: een klokje in een paarse cirkel; loopt hij, dan is de kaart zelf de balk die leegloopt */
+.timers { display: flex; flex-wrap: wrap; justify-content: flex-end; align-items: center; gap: 8px; padding: 0 12px 12px; }
+.stap + .timers { margin-top: -10px; }
+.vinklijst .timers { margin-top: -6px; padding: 0 0 10px 30px; }
+/* dieper paars dan de accentkleur, zodat het witte klokje goed afsteekt */
+.timer-start { display: inline-flex; align-items: center; justify-content: center; gap: 6px; min-width: 44px; height: 44px; padding: 0; border-radius: 99px; border: 0; background: #7c5cff; color: #fff; font-size: 13px; font-weight: 600; font-variant-numeric: tabular-nums; }
+.timer-start:has(span) { padding: 0 14px 0 12px; }
+.timer-start svg { width: 22px; height: 22px; }
 .timer { display: flex; flex: 1 0 100%; align-items: center; gap: 4px; padding-left: 52px; }
 .stap + .timers:has(.timer) { margin-top: -8px; }
 .vinklijst .timers:has(.timer) { margin-top: -6px; padding-left: 0; }

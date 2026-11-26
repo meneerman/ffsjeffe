@@ -1,7 +1,7 @@
 import { parseCategorieen, parseRecept, parseVerpakkingen } from '../core/recepten'
 import { GEEN_WINKELS, parseWinkels, type Winkels } from '../core/winkels'
 import { migreer } from '../core/menu'
-import type { Categorieen, Concept, Instellingen, Menu, MenuV2, Recept, ReceptFout, Verpakkingen } from '../core/types'
+import type { Categorieen, Concept, Instellingen, Menu, MenuV2, Recept, ReceptFout, Verpakkingen, Wijziging } from '../core/types'
 
 export type Verbinding = { owner: string; repo: string; token: string }
 export type KeepStatus = { tijd: string; ok: boolean; melding: string; weken: string[] }
@@ -33,6 +33,8 @@ export function vanBase64(b64: string): string {
 const MENU = 'weekmenu/menu.json'
 /** Het gedeelde concept: bewust een apart bestand, want alleen een push op menu.json start de Keep-sync. */
 const CONCEPT = 'weekmenu/concept.json'
+
+const WIJZIGINGEN = 'weekmenu/wijzigingen.json'
 
 export class DataRepo {
   constructor(private v: Verbinding, private f: typeof fetch = (...a) => fetch(...a)) {}
@@ -128,6 +130,24 @@ export class DataRepo {
       /* onbruikbaar: negeren, de eerstvolgende wijziging overschrijft het */
     }
     return null
+  }
+
+  async wijzigingen(): Promise<{ wijzigingen: Wijziging[]; sha: string } | null> {
+    const b = await this.bestand(WIJZIGINGEN)
+    if (!b) return null
+    // een onleesbaar bestand nooit stilzwijgend overschrijven: er staan notities in
+    let lijst: unknown
+    try {
+      lijst = (JSON.parse(b.inhoud) as { wijzigingen?: unknown }).wijzigingen
+    } catch {
+      /* hieronder gemeld */
+    }
+    if (!Array.isArray(lijst)) throw new Error(`${WIJZIGINGEN} is onleesbaar`)
+    return { wijzigingen: lijst as Wijziging[], sha: b.sha }
+  }
+
+  async zetWijzigingen(wijzigingen: Wijziging[], sha: string | null, bericht: string): Promise<string> {
+    return this.schrijf(WIJZIGINGEN, { wijzigingen }, sha, bericht)
   }
 
   private async schrijf(pad: string, waarde: unknown, sha: string | null, bericht: string): Promise<string> {

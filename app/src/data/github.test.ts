@@ -152,3 +152,11 @@ test('zetConcept: 409 of 422-over-sha is VerouderdFout', async () => {
   await expect(repo({ [`PUT ${CONCEPTPAD}`]: { status: 409 } }).repo.zetConcept(CONCEPT, 'o', 'x')).rejects.toBeInstanceOf(VerouderdFout)
   await expect(repo({ [`PUT ${CONCEPTPAD}`]: { status: 422, body: { message: '"sha" wasn\'t supplied.' } } }).repo.zetConcept(CONCEPT, null, 'x')).rejects.toBeInstanceOf(VerouderdFout)
 })
+
+test('een onleesbaar wijzigingenbestand geeft een fout in plaats van een lege lijst', async () => {
+  const antwoord = (inhoud: string) => (async () => new Response(JSON.stringify({ content: btoa(inhoud), sha: 's' }))) as typeof fetch
+  const v = { owner: 'o', repo: 'r', token: 't' }
+  await expect(new DataRepo(v, antwoord('kapot')).wijzigingen()).rejects.toThrow('onleesbaar')
+  await expect(new DataRepo(v, antwoord('{"wijzigingen":[]}')).wijzigingen()).resolves.toEqual({ wijzigingen: [], sha: 's' })
+  await expect(new DataRepo(v, (async () => new Response('', { status: 404 })) as typeof fetch).wijzigingen()).resolves.toBeNull()
+})

@@ -8,6 +8,7 @@ import { Achtergrond } from './Achtergrond'
 import { Menu } from './Menu'
 import { ReceptPagina } from './Recept'
 import { Recepten } from './Recepten'
+import { TimerBalk } from './TimerBalk'
 import './stijl.css'
 
 export function useHash(): string {
@@ -26,7 +27,7 @@ function Inhoud(p: SchermProps) {
   if (p.hash.startsWith('#/recept/')) {
     const id = decodeURIComponent(p.hash.slice('#/recept/'.length))
     const r = p.data.recepten.find((x) => x.id === id)
-    return r ? <ReceptPagina key={r.id} recept={r} data={p.data} repo={p.repo} naam={p.naam} /> : (
+    return r ? <ReceptPagina key={r.id} recept={r} data={p.data} repo={p.repo} naam={p.naam} bijgewerkt={p.bijgewerkt} /> : (
       <p className="kaart">Recept niet gevonden. <a className="link-accent" href="#/">Terug naar het menu</a></p>
     )
   }
@@ -66,6 +67,7 @@ export default function App({ maakRepo = (v: Verbinding) => new DataRepo(v), Sch
   return (
     <main className="pagina">
       <Achtergrond />
+      <TimerBalk hash={hash} />
       {data.status === 'laden' && <p className="zacht laden">Laden…</p>}
       {data.status === 'fout' && (
         <div className="kaart">

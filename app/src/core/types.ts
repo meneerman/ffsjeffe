@@ -82,3 +82,6 @@ export type MenuV2 = {
 export type Concept = { gerechten: Gerecht[]; sinds: string; door: string }
 
 export type Instellingen = { huishouden: number }
+
+/** Wens om een recept aan te passen, in de app getypt. `verwerktOp` gevuld = in het recept doorgevoerd. */
+export type Wijziging = { id: string; receptId: string; tekst: string; door: string; op: string; verwerktOp: string | null }

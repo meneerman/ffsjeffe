@@ -3,7 +3,7 @@ import type { Categorieen, Concept, Instellingen, Menu, Recept, ReceptFout, Verp
 import type { Winkels } from '../core/winkels'
 import type { DataRepo, KeepStatus } from '../data/github'
 
-export type Repo = Pick<DataRepo, 'recepten' | 'menu' | 'instellingen' | 'keepStatus' | 'zetMenu' | 'concept' | 'zetConcept'>
+export type Repo = Pick<DataRepo, 'recepten' | 'menu' | 'instellingen' | 'keepStatus' | 'zetMenu' | 'concept' | 'zetConcept' | 'wijzigingen' | 'zetWijzigingen'>
 
 export type AppData = {
   recepten: Recept[]

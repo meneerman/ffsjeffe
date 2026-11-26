@@ -1,5 +1,5 @@
 import { expect, test } from 'vitest'
-import { alleGerechten, datumNL, leegmaken, markeerGegeten, migreer, vastzetten, verlooptNa, zaadVoor } from './menu'
+import { alleGerechten, datumNL, leegmaken, markeerBereid, markeerGegeten, migreer, vastzetten, verlooptNa, zaadVoor } from './menu'
 import { gerecht, menuMet } from './testdata'
 import type { MenuV2 } from './types'
 
@@ -100,4 +100,15 @@ test('markeerGegeten uit zonder eerdere datum haalt laatstGegeten weg', () => {
 test('leegmaken leegt alle batches en houdt laatstGegeten en beoordelingen', () => {
   const m = leegmaken(basis({ beoordelingen: { A: 5 } }), NU)
   expect(m).toEqual({ versie: 3, batches: [], leegmakenOp: NU.toISOString(), laatstGegeten: { A: '2026-10-01' }, beoordelingen: { A: 5 } })
+})
+
+test('markeerBereid vinkt het open gerecht af, en bewaart anders alleen sterren en datum', () => {
+  const op = markeerBereid(basis(), 'A', 4, LATER)
+  expect(op.batches[0].gerechten[0].gegetenOp).toBe('2026-11-23')
+  expect(op.beoordelingen.A).toBe(4)
+  const los = markeerBereid(basis(), 'Z', 5, LATER)
+  expect(los.batches).toEqual(basis().batches)
+  expect([los.laatstGegeten.Z, los.beoordelingen.Z, los.leegmakenOp]).toEqual(['2026-11-23', 5, null])
+  const leeg = markeerBereid(null, 'Z', null, LATER)
+  expect(leeg).toEqual({ versie: 3, batches: [], leegmakenOp: null, laatstGegeten: { Z: '2026-11-23' }, beoordelingen: {} })
 })

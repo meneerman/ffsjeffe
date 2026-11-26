@@ -1,7 +1,7 @@
 // Testhulp: een DataRepo in het geheugen.
 import { parseCategorieen, parseRecept, parseVerpakkingen } from '../core/recepten'
 import { parseWinkels } from '../core/winkels'
-import type { Concept, Menu, Recept } from '../core/types'
+import type { Concept, Menu, Recept, Wijziging } from '../core/types'
 import { VerouderdFout, type KeepStatus } from '../data/github'
 import { leesVoorbeeld } from '../testhulp'
 
@@ -25,6 +25,18 @@ export class NepRepo {
   zetFout: Error | null = null
   leesFout: Error | null = null
 
+  wijzigingen_: { wijzigingen: Wijziging[]; sha: string } | null = null
+  async wijzigingen() {
+    if (this.leesFout) throw this.leesFout
+    return this.wijzigingen_
+  }
+  async zetWijzigingen(wijzigingen: Wijziging[], sha: string | null) {
+    if (this.zetFout) throw this.zetFout
+    if ((this.wijzigingen_?.sha ?? null) !== sha) throw new VerouderdFout()
+    const nieuw = `w${wijzigingen.length}-${Math.random()}`
+    this.wijzigingen_ = { wijzigingen, sha: nieuw }
+    return nieuw
+  }
   async recepten() {
     if (this.leesFout) throw this.leesFout
     return { recepten: this.recepten_, fouten: this.fouten_, verpakkingen: parseVerpakkingen(leesVoorbeeld('_verpakkingen.md')),

@@ -1,12 +1,12 @@
 import { motion } from 'motion/react'
-import { useRef, useState } from 'react'
+import { useState } from 'react'
 import { aantalPorties } from '../core/schalen'
 import type { Batch, Menu, Recept } from '../core/types'
 import { dagenGeleden } from '../core/voorstel'
 import type { Winkels } from '../core/winkels'
 import { lijstItem } from './beweging'
 import { Boodschappen } from './Boodschappen'
-import { Venster } from './Venster'
+import { Beoordeel, type Vraag } from './Beoordeel'
 import { ReceptWinkelbordjes } from './Winkel'
 
 export function geledenTekst(datum: string | undefined, nu: Date): string {
@@ -34,16 +34,9 @@ export function Bereiden({ menu, perId, nu, bezig, zetGegeten, winkels }: {
   const totaal = batches.reduce((n, b) => n + zichtbaar(b).length, 0)
   const gegeten = batches.reduce((n, b) => n + zichtbaar(b).filter((g) => g.gegetenOp).length, 0)
 
-  const [vraag, setVraag] = useState<{ batchId: string; recept: Recept } | null>(null)
-  const laatsteVraag = useRef(vraag)
-  if (vraag) laatsteVraag.current = vraag
-  const getoondeVraag = vraag ?? laatsteVraag.current
-  const [sterren, setSterren] = useState<number | null>(null)
-  const open = (batchId: string, recept: Recept) => {
-    setSterren(menu.beoordelingen[recept.id] ?? null)
-    setVraag({ batchId, recept })
-  }
-  const bevestig = () => {
+  const [vraag, setVraag] = useState<(Vraag & { batchId: string; recept: Recept }) | null>(null)
+  const open = (batchId: string, recept: Recept) => setVraag({ batchId, recept, titel: recept.titel, begin: menu.beoordelingen[recept.id] ?? null })
+  const bevestig = (sterren: number | null) => {
     if (!vraag) return
     const { batchId, recept } = vraag
     setVraag(null)
@@ -95,20 +88,7 @@ export function Bereiden({ menu, perId, nu, bezig, zetGegeten, winkels }: {
         )
       })}
 
-      <Venster open={!!vraag} sluit={() => setVraag(null)} label="Gegeten?">
-        <h2 className="kop-klein">Gegeten?</h2>
-        <p className="zacht">{getoondeVraag?.recept.titel}. Hoe was het?</p>
-        <div className="sterren" role="group" aria-label="Beoordeling">
-          <button className={`ster nul${sterren === 0 ? ' aan' : ''}`} aria-label="0 sterren" aria-pressed={sterren === 0} onClick={() => setSterren(0)}>0</button>
-          {[1, 2, 3, 4, 5].map((n) => (
-            <button key={n} className={`ster${sterren !== null && n <= sterren ? ' aan' : ''}`} aria-label={`${n} ${n === 1 ? 'ster' : 'sterren'}`} aria-pressed={sterren === n} onClick={() => setSterren(n)}>★</button>
-          ))}
-        </div>
-        <div className="knoppenrij">
-          <button className="knop" onClick={() => setVraag(null)}>Annuleren</button>
-          <button className="knop primair" disabled={bezig} onClick={bevestig}>Bevestigen</button>
-        </div>
-      </Venster>
+      <Beoordeel vraag={vraag} bezig={bezig} sluit={() => setVraag(null)} bevestig={bevestig} />
     </>
   )
 }

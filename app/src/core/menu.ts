@@ -97,3 +97,15 @@ export function gerechtVoorRecept(menu: Menu | null, receptId: string): { batch:
   const gevonden = (menu?.batches ?? []).flatMap((batch) => batch.gerechten.filter((g) => g.receptId === receptId).map((gerecht) => ({ batch, gerecht })))
   return gevonden.find((x) => !x.gerecht.gegetenOp) ?? gevonden[gevonden.length - 1] ?? null
 }
+
+/** Zojuist gekookt en gegeten: het openstaande gerecht op het menu afvinken, anders alleen datum en sterren bewaren. */
+export function markeerBereid(oud: Menu | null, receptId: string, beoordeling: number | null, nu: Date): Menu {
+  const menu: Menu = oud ?? { versie: 3, batches: [], leegmakenOp: null, laatstGegeten: {}, beoordelingen: {} }
+  const open = gerechtVoorRecept(menu, receptId)
+  if (open && !open.gerecht.gegetenOp) return markeerGegeten(menu, open.batch.id, receptId, true, beoordeling, nu)
+  return {
+    ...menu,
+    laatstGegeten: { ...menu.laatstGegeten, [receptId]: datumNL(nu) },
+    beoordelingen: beoordeling === null ? menu.beoordelingen : { ...menu.beoordelingen, [receptId]: beoordeling },
+  }
+}

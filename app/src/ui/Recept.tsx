@@ -1,50 +1,20 @@
-import { Fragment, useEffect, useState } from 'react'
+import { Fragment, useState } from 'react'
 import { schaalfactor } from '../core/boodschappen'
 import { gerechtVoorRecept } from '../core/menu'
 import { aantalPorties, schaalStap, toonIngredient } from '../core/schalen'
-import type { Recept } from '../core/types'
+import type { Menu, Recept } from '../core/types'
 import { lees, schrijf } from './opslag'
+import { BereidKnop } from './BereidKnop'
 import { Stapper } from './Stapper'
+import { TimerKaart } from './TimerKaart'
+import { kaartStand, useTimers } from './timers'
+import { useSchermAan } from './useSchermAan'
 import { useConcept } from './useConcept'
 import { buitenAh, buitenLidl } from '../core/winkels'
 import { useSleepVinken } from './useSleepVinken'
+import { Wijzigingen } from './Wijzigingen'
 import { Winkelbord, Winkelbordjes } from './Winkel'
 import type { AppData, Repo } from './useData'
-
-type Lock = { release: () => Promise<void>; released?: boolean; addEventListener?: (t: 'release', f: () => void) => void }
-type WakeLockApi = { request: (t: 'screen') => Promise<Lock> }
-
-/**
- * Houdt het scherm aan zolang de pagina open is. Telefoons laten de vergrendeling los zodra je
- * de app even verlaat; bij terugkomen wordt hij opnieuw aangevraagd. Geeft terug of hij actief is.
- */
-function useSchermAan(): boolean {
-  const [actief, setActief] = useState(false)
-  useEffect(() => {
-    const wl = (navigator as Navigator & { wakeLock?: WakeLockApi }).wakeLock
-    if (!wl) return
-    let lock: Lock | null = null
-    let weg = false
-    const vraag = () => {
-      if (weg || (lock && !lock.released)) return
-      wl.request('screen').then((l) => {
-        if (weg) return void l.release().catch(() => {})
-        lock = l
-        setActief(true)
-        l.addEventListener?.('release', () => { lock = null; setActief(false) })
-      }).catch(() => setActief(false))
-    }
-    const zichtbaar = () => { if (document.visibilityState === 'visible') { lock = lock?.released ? null : lock; vraag() } }
-    vraag()
-    document.addEventListener('visibilitychange', zichtbaar)
-    return () => {
-      weg = true
-      document.removeEventListener('visibilitychange', zichtbaar)
-      lock?.release().catch(() => {})
-    }
-  }, [])
-  return actief
-}
 
 type Voortgang = { i: number[]; v: number[]; s: number[] }
 
@@ -75,8 +45,9 @@ function stapGroepen({ stappen, onderdelen = [] }: Recept): { naam: string | nul
     .filter((g) => g.nummers.length > 0)
 }
 
-export function ReceptPagina({ recept: r, data, repo, naam }: { recept: Recept; data: AppData; repo: Repo; naam: string }) {
+export function ReceptPagina({ recept: r, data, repo, naam, bijgewerkt }: { recept: Recept; data: AppData; repo: Repo; naam: string; bijgewerkt?: (m: { menu: Menu; sha: string }) => void }) {
   const schermAan = useSchermAan()
+  const { timers, nu } = useTimers()
   const menu = data.menu?.menu ?? null
   const concept = useConcept(data, menu, repo, naam)
   const opMenu = concept.gerechten.find((g) => g.receptId === r.id)
@@ -172,12 +143,15 @@ export function ReceptPagina({ recept: r, data, repo, naam }: { recept: Recept; 
                 <ul className="vinklijst voorbereiding" aria-label={blok.kop}>
                   {blok.regels.map(({ n, regel }) => {
                     const tekst = schaalStap(regel, factor)
+                    const plek = `${r.id}|v${n}`
+                    const stand = kaartStand(timers, nu, plek)
                     return (
-                      <li key={n} data-vink-id={String(n)} className={vg.v.includes(n) ? 'af' : ''}>
+                      <li key={n} data-vink-id={String(n)} className={`${vg.v.includes(n) ? 'af' : ''}${stand ? ` timer-${stand}` : ''}`}>
                         <label>
                           <input type="checkbox" checked={vg.v.includes(n)} onChange={() => wissel('v', n)} aria-label={tekst} {...sleepV.vinkvak(String(n))} />
                           <span>{tekst}</span>
                         </label>
+                        <TimerKaart tekst={regel} plek={plek} receptId={r.id} naam={`Voorbereiding ${n + 1}`} startbaar={!vg.v.includes(n)} />
                       </li>
                     )
                   })}
@@ -205,16 +179,18 @@ export function ReceptPagina({ recept: r, data, repo, naam }: { recept: Recept; 
             <ol className="stappen" aria-label={groep.naam ?? undefined}>
               {groep.nummers.map((n) => {
                 const klaar = vg.s.includes(n)
-                const nu = n === huidigeStap
+                const isNu = n === huidigeStap
                 const tekst = schaalStap(r.stappen[n], factor)
                 const [doen, tegelijk] = tekst.split(TEGELIJK)
+                const plek = `${r.id}|s${n}`
+                const stand = kaartStand(timers, nu, plek)
                 return (
-                  <li key={n}>
+                  <li key={n} className={`stapkaart${klaar ? ' klaar' : ''}${isNu ? ' nu' : ''}${stand ? ` timer-${stand}` : ''}`}>
                     <button
-                      className={`stap${klaar ? ' klaar' : ''}${nu ? ' nu' : ''}`}
+                      className="stap"
                       aria-label={`Stap ${n + 1}: ${tekst}`}
                       aria-pressed={klaar}
-                      aria-current={nu ? 'step' : undefined}
+                      aria-current={isNu ? 'step' : undefined}
                       onClick={() => wissel('s', n)}
                     >
                       <span className="nr" aria-hidden="true">{klaar ? '✓' : n + 1}</span>
@@ -223,6 +199,7 @@ export function ReceptPagina({ recept: r, data, repo, naam }: { recept: Recept; 
                         {tegelijk && <span className="tegelijk"><span aria-hidden="true">⇄ </span>{tegelijk}</span>}
                       </span>
                     </button>
+                    <TimerKaart tekst={r.stappen[n]} plek={plek} receptId={r.id} naam={`Stap ${n + 1}`} startbaar={!klaar} />
                   </li>
                 )
               })}
@@ -237,6 +214,10 @@ export function ReceptPagina({ recept: r, data, repo, naam }: { recept: Recept; 
           <p className="notities">{r.notities}</p>
         </>
       )}
+
+      <Wijzigingen receptId={r.id} repo={repo} naam={naam} />
+
+      <BereidKnop recept={r} data={data} repo={repo} naam={naam} bijgewerkt={bijgewerkt} />
 
       {r.bron && <p><a className="link-accent bron" href={r.bron} target="_blank" rel="noreferrer">Origineel recept ↗</a></p>}
     </article>

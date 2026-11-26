@@ -177,21 +177,24 @@ footer { margin-top: 40px; text-align: center; }
 .tegelijk { display: block; margin-top: 8px; font-size: 14px; line-height: 1.4; color: var(--accent); }
 .stapkaart.klaar .tegelijk { display: none; }
 
-/* timers: een klokje in een paarse cirkel; loopt hij, dan is de kaart zelf de balk die leegloopt */
-.timers { display: flex; flex-wrap: wrap; justify-content: flex-end; align-items: center; gap: 8px; padding: 0 12px 12px; }
-.stap + .timers { margin-top: -10px; }
-.vinklijst .timers { margin-top: -6px; padding: 0 0 10px 30px; }
+/* timers: een klokje in een paarse cirkel naast de tekst; loopt hij, dan is de kaart zelf de balk die leegloopt */
+.stapkaart, .voorbereiding li { display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: center; }
+.timer-knoppen { grid-column: 2; display: grid; justify-items: end; gap: 8px; min-width: 56px; padding: 12px 12px 12px 0; }
+.stap:has(+ .timer-knoppen) { padding-right: 12px; }
+.voorbereiding .timer-knoppen { min-width: 44px; padding: 8px 0; margin-left: 12px; }
 /* dieper paars dan de accentkleur, zodat het witte klokje goed afsteekt */
 .timer-start { display: inline-flex; align-items: center; justify-content: center; gap: 6px; min-width: 44px; height: 44px; padding: 0; border-radius: 99px; border: 0; background: #7c5cff; color: #fff; font-size: 13px; font-weight: 600; font-variant-numeric: tabular-nums; }
-.timer-start:has(span) { padding: 0 14px 0 12px; }
 .timer-start svg { width: 22px; height: 22px; }
-.timer { display: flex; flex: 1 0 100%; align-items: center; gap: 4px; padding-left: 52px; }
-.stap + .timers:has(.timer) { margin-top: -8px; }
-.vinklijst .timers:has(.timer) { margin-top: -6px; padding-left: 0; }
-.vinklijst .timer { padding-left: 38px; }
+/* twee tijden in één kaart: het bijschrift onder het icoon, zodat de tekst niet smaller wordt */
+.timer-start:has(span) { flex-direction: column; gap: 1px; width: 52px; height: 52px; font-size: 11px; line-height: 1; white-space: nowrap; }
+.timer-start:has(span) svg { width: 20px; height: 20px; }
+.timers { grid-column: 1 / -1; display: grid; gap: 2px; padding: 0 12px 8px; }
+.stapkaart .timers { margin-top: -10px; }
+.voorbereiding .timers { margin-top: -8px; padding: 0 0 4px; }
+.timer { display: flex; align-items: center; gap: 4px; padding-left: 50px; }
+.voorbereiding .timer { padding-left: 38px; }
 .timer-klok { margin-right: auto; font-size: 22px; font-weight: 600; font-variant-numeric: tabular-nums; color: var(--accent); }
 .timer-knop { min-width: 40px; min-height: 40px; padding: 0; border: 0; border-radius: 99px; background: none; color: var(--zacht); font-size: 15px; font-variant-numeric: tabular-nums; }
-.timer-knop[aria-label="Stop"] { font-size: 22px; }
 .timer.af .timer-klok { color: var(--weg); }
 .timer-uit { min-height: 40px; padding-left: 22px; padding-right: 22px; font-size: 14px; font-weight: 600; }
 .stapkaart.timer-loopt, .vinklijst li.timer-loopt { border: 1px solid var(--accent); background: linear-gradient(to right, rgba(185, 168, 255, 0.22) calc(var(--rest) * 100%), rgba(185, 168, 255, 0.04) calc(var(--rest) * 100%)); }

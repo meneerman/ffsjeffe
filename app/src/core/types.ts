@@ -22,6 +22,8 @@ export type Recept = {
   benodigdheden: string[]
   voorbereiding: string[]
   stappen: string[]
+  /** kopjes in de bereiding; `vanaf` is de index in `stappen` waar het onderdeel begint */
+  onderdelen?: { naam: string; vanaf: number }[]
   notities: string
 }
 

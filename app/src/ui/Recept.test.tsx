@@ -291,3 +291,35 @@ test('de chip noemt "1 dag van tevoren" in plaats van "Vooraf"', async () => {
   toon(d, { ...recept2(d), vooraf: 'een nacht marineren' })
   expect(screen.getByText('⏳ 1 dag van tevoren: een nacht marineren')).toBeTruthy()
 })
+
+const metStappen = async (stappen: string[], onderdelen: { naam: string; vanaf: number }[] = []) => {
+  const d = await data()
+  return { d, r: { ...recept2(d), stappen, onderdelen } }
+}
+
+test('bereiding per onderdeel: kopjes, doorlopende nummering, voortgang over alles', async () => {
+  const { d, r } = await metStappen(['Roer de saus.', 'Rijg de spiesen.', 'Gril de spiesen.'], [{ naam: 'Saus', vanaf: 0 }, { naam: 'Souvlaki', vanaf: 1 }])
+  toon(d, r)
+  expect(within(screen.getByRole('list', { name: 'Saus' })).getAllByRole('button')).toHaveLength(1)
+  const tweede = within(screen.getByRole('list', { name: 'Souvlaki' })).getAllByRole('button')
+  expect(tweede.map((b) => b.getAttribute('aria-label'))).toEqual(['Stap 2: Rijg de spiesen.', 'Stap 3: Gril de spiesen.'])
+  expect(screen.getByRole('heading', { level: 2, name: 'Souvlaki' })).toBeTruthy()
+  await userEvent.click(screen.getByRole('button', { name: /^Stap 1:/ }))
+  expect(screen.getByText('Stap 2 van 3')).toBeTruthy()
+  expect(tweede[0].getAttribute('aria-current')).toBe('step')
+})
+
+test('stappen vóór het eerste kopje blijven staan', async () => {
+  const { d, r } = await metStappen(['Verwarm de pan.', 'Roer de saus.'], [{ naam: 'Saus', vanaf: 1 }])
+  toon(d, r)
+  expect(screen.getAllByRole('button', { name: /^Stap \d+:/ })).toHaveLength(2)
+})
+
+test('Tegelijk staat als aparte kleine regel bij de stap, geschaald', async () => {
+  const { d, r } = await metStappen(['Gril de spiesen 7 min. Tegelijk: bak {4} pitabroodjes (stap 2).', 'Bak ze.'])
+  toon(d, r)
+  const knop = screen.getByRole('button', { name: /^Stap 1:/ })
+  expect(knop.querySelector('.stap-tekst')!.firstChild!.textContent).toBe('Gril de spiesen 7 min.')
+  expect(knop.querySelector('.tegelijk')!.textContent).toBe('⇄ Tegelijk: bak 3 pitabroodjes (stap 2).')
+  expect(screen.getByRole('button', { name: /^Stap 2:/ }).querySelector('.tegelijk')).toBeNull()
+})

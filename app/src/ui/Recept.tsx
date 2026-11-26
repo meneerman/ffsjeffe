@@ -62,6 +62,19 @@ function voorbereidingBlokken(voorbereiding: string[]): { kop: string; regels: {
   ].filter((blok) => blok.regels.length > 0)
 }
 
+const TEGELIJK = /\s+(?=Tegelijk:)/
+
+/** Eén groep per onderdeel, met de stapnummers uit het recept. Stappen vóór het eerste kopje krijgen geen naam. */
+function stapGroepen({ stappen, onderdelen = [] }: Recept): { naam: string | null; nummers: number[] }[] {
+  const grenzen = [{ naam: null as string | null, vanaf: 0 }, ...onderdelen]
+  return grenzen
+    .map((g, i) => {
+      const tot = grenzen[i + 1]?.vanaf ?? stappen.length
+      return { naam: g.naam, nummers: Array.from({ length: tot - g.vanaf }, (_, k) => g.vanaf + k) }
+    })
+    .filter((g) => g.nummers.length > 0)
+}
+
 export function ReceptPagina({ recept: r, data, repo, naam }: { recept: Recept; data: AppData; repo: Repo; naam: string }) {
   const schermAan = useSchermAan()
   const menu = data.menu?.menu ?? null
@@ -186,27 +199,36 @@ export function ReceptPagina({ recept: r, data, repo, naam }: { recept: Recept; 
       {r.stappen.length === 0 ? (
         <p className="zacht">Geen bereiding opgeschreven.</p>
       ) : (
-        <ol className="stappen">
-          {r.stappen.map((s, n) => {
-            const klaar = vg.s.includes(n)
-            const nu = n === huidigeStap
-            const tekst = schaalStap(s, factor)
-            return (
-              <li key={n}>
-                <button
-                  className={`stap${klaar ? ' klaar' : ''}${nu ? ' nu' : ''}`}
-                  aria-label={`Stap ${n + 1}: ${tekst}`}
-                  aria-pressed={klaar}
-                  aria-current={nu ? 'step' : undefined}
-                  onClick={() => wissel('s', n)}
-                >
-                  <span className="nr" aria-hidden="true">{klaar ? '✓' : n + 1}</span>
-                  <span className="stap-tekst">{tekst}</span>
-                </button>
-              </li>
-            )
-          })}
-        </ol>
+        stapGroepen(r).map((groep) => (
+          <Fragment key={groep.nummers[0]}>
+            {groep.naam && <h2 className="onderdeel">{groep.naam}</h2>}
+            <ol className="stappen" aria-label={groep.naam ?? undefined}>
+              {groep.nummers.map((n) => {
+                const klaar = vg.s.includes(n)
+                const nu = n === huidigeStap
+                const tekst = schaalStap(r.stappen[n], factor)
+                const [doen, tegelijk] = tekst.split(TEGELIJK)
+                return (
+                  <li key={n}>
+                    <button
+                      className={`stap${klaar ? ' klaar' : ''}${nu ? ' nu' : ''}`}
+                      aria-label={`Stap ${n + 1}: ${tekst}`}
+                      aria-pressed={klaar}
+                      aria-current={nu ? 'step' : undefined}
+                      onClick={() => wissel('s', n)}
+                    >
+                      <span className="nr" aria-hidden="true">{klaar ? '✓' : n + 1}</span>
+                      <span className="stap-tekst">
+                        {doen}
+                        {tegelijk && <span className="tegelijk"><span aria-hidden="true">⇄ </span>{tegelijk}</span>}
+                      </span>
+                    </button>
+                  </li>
+                )
+              })}
+            </ol>
+          </Fragment>
+        ))
       )}
 
       {r.notities && (

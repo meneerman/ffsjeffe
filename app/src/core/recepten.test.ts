@@ -83,6 +83,17 @@ test('bereiding stopt bij de volgende kop en negeert tekst buiten de lijst', () 
   expect(r.stappen).toEqual(['Een.', 'Twee'])
 })
 
+test('### binnen de bereiding geeft onderdelen; geen stap valt weg', () => {
+  const r = recept('porties: 2\ningredienten: []', '## Bereiding\n0. Vooraf.\n\n### Saus\n1. Een.\n2. Twee.\n\n### Leeg\n\n### Vlees\n3. Drie.\n\n## Notities\n### Niet\n1. Niet dit.') as Recept
+  expect(r.stappen).toEqual(['Vooraf.', 'Een.', 'Twee.', 'Drie.'])
+  expect(r.onderdelen).toEqual([{ naam: 'Saus', vanaf: 1 }, { naam: 'Vlees', vanaf: 3 }])
+})
+
+test('zonder ### geen onderdelen', () => {
+  const r = recept('porties: 2\ningredienten: []', '## Bereiding\n1. Een.') as Recept
+  expect(r.onderdelen).toEqual([])
+})
+
 test('fouten met reden', () => {
   expect(parseRecept('recepten/X.md', 'alleen tekst')).toEqual({ pad: 'recepten/X.md', fout: 'geen frontmatter' })
   expect(recept('ingredienten: []')).toEqual({ pad: 'recepten/X.md', fout: 'porties ontbreekt of is geen geheel getal ≥ 1' })

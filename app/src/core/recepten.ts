@@ -90,6 +90,20 @@ function lijst(tekst: string): string[] {
   return items
 }
 
+/** De bereiding mag per onderdeel een "### Naam" hebben. De stappen blijven één doorlopende lijst. */
+function bereiding(tekst: string): { stappen: string[]; onderdelen: { naam: string; vanaf: number }[] } {
+  const stappen: string[] = []
+  const onderdelen: { naam: string; vanaf: number }[] = []
+  // split met een vangende groep: [tekst vóór het eerste kopje, naam, tekst, naam, tekst, …]
+  const delen = tekst.split(/^###[ \t]+(.+)$/m)
+  for (let i = 0; i < delen.length; i += 2) {
+    const items = lijst(delen[i])
+    if (i > 0 && items.length > 0) onderdelen.push({ naam: delen[i - 1].trim(), vanaf: stappen.length })
+    stappen.push(...items)
+  }
+  return { stappen, onderdelen }
+}
+
 export function parseRecept(pad: string, markdown: string): Recept | ReceptFout {
   const fout = (f: string): ReceptFout => ({ pad, fout: f })
   let delen
@@ -137,7 +151,7 @@ export function parseRecept(pad: string, markdown: string): Recept | ReceptFout 
     ingredienten,
     benodigdheden: lijst(sectie(delen.rest, 'benodigdheden')),
     voorbereiding: lijst(sectie(delen.rest, 'voorbereiding')),
-    stappen: lijst(sectie(delen.rest, 'bereiding')),
+    ...bereiding(sectie(delen.rest, 'bereiding')),
     notities: sectie(delen.rest, 'notities'),
   }
 }
